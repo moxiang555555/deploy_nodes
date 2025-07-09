@@ -12,6 +12,43 @@ get_timestamp() {
     date "+%Y-%m-%d %H:%M:%S"
 }
 
+# 清理函数：终止 screen 会话和进程
+cleanup() {
+    echo -e "[$(get_timestamp)] ${YELLOW}收到退出信号，正在清理进程和 screen 会话...${NC}"
+    # 终止 screen 会话
+    if screen -list | grep -q "nexus_node"; then
+        echo -e "[$(get_timestamp)] ${BLUE}正在终止 nexus_node screen 会话...${NC}"
+        screen -S nexus_node -X quit 2>/dev/null || {
+            echo -e "[$(get_timestamp)] ${RED}无法终止 screen 会话，请检查权限或会话状态。${NC}"
+        }
+    else
+        echo -e "[$(get_timestamp)] ${GREEN}未找到 nexus_node screen 会话，无需清理。${NC}"
+    fi
+
+    # 终止 nexus-network 进程
+    if [[ -n "$NODE_PID" ]] && ps -p "$NODE_PID" > /dev/null; then
+        echo -e "[$(get_timestamp)] ${BLUE}正在终止 Nexus 节点进程 (PID: $NODE_PID)...${NC}"
+        kill "$NODE_PID" 2>/dev/null
+        wait "$NODE_PID" 2>/dev/null || echo -e "[$(get_timestamp)] ${RED}无法终止 PID $NODE_PID 的进程。${NC}"
+    else
+        # 如果 NODE_PID 未定义，尝试查找相关进程
+        NODE_PID=$(pgrep -f "nexus-network start --node-id")
+        if [[ -n "$NODE_PID" ]]; then
+            echo -e "[$(get_timestamp)] ${BLUE}正在终止 Nexus 节点进程 (PID: $NODE_PID)...${NC}"
+            kill "$NODE_PID" 2>/dev/null
+            wait "$NODE_PID" 2>/dev/null || echo -e "[$(get_timestamp)] ${RED}无法终止 PID $NODE_PID 的进程。${NC}"
+        else
+            echo -e "[$(get_timestamp)] ${GREEN}未找到 Nexus 节点进程，无需清理。${NC}"
+        fi
+    fi
+
+    echo -e "[$(get_timestamp)] ${GREEN}清理完成，脚本退出。${NC}"
+    exit 0
+}
+
+# 设置 Ctrl+C 捕获
+trap cleanup SIGINT
+
 # 检测操作系统
 OS=$(uname -s)
 case "$OS" in
@@ -215,7 +252,16 @@ install_nexus_cli() {
     done
 
     if [[ "$success" == false ]]; then
-        echo -e "[$(get_timestamp)] ${YELLOW}Nexus CLI 安装/更新失败 $max_attempts 次，将继续运行脚本。${NC}"
+        echo -e "[$(get_timestamp)] ${YELLOW}Nexus CLI 安装/更新失败 $max_attempts 次，将使用当前版本运行节点。${NC}"
+    fi
+
+    # 无论成功或失败，都输出版本
+    if command -v nexus-network &> /dev/null; then
+        NEXUS_VERSION=$(nexus-network --version 2>/dev/null)
+        echo -e "[$(get_timestamp)] ${GREEN}当前 Nexus CLI 版本：${NEXUS_VERSION}${NC}"
+    else
+        echo -e "[$(get_timestamp)] ${RED}未找到 Nexus CLI，无法运行节点。${NC}"
+        exit 1
     fi
 }
 
@@ -234,7 +280,6 @@ run_node() {
     install_rust
     configure_rust_target
     install_nexus_cli
-    check_nexus_version
 
     # 检查并获取 Node ID
     CONFIG_PATH="$HOME/.nexus/config.json"
@@ -294,6 +339,9 @@ run_node() {
 
     # 定义启动节点的函数
     start_node() {
+        # 每次重启时重新尝试安装/更新 Nexus CLI
+        install_nexus_cli
+
         echo -e "[$(get_timestamp)] ${BLUE}正在启动 Nexus 节点在 screen 会话中...${NC}"
         NEXUS_VERSION=$(nexus-network --version 2>/dev/null || echo "未知版本")
         screen -dmS nexus_node bash -c 'while true; do echo "[$(date "+%Y-%m-%d %H:%M:%S")] Nexus CLI 版本: '"$NEXUS_VERSION"' - 日志:" >> ~/nexus.log; nexus-network start --node-id '"${NODE_ID_TO_USE}"' >> ~/nexus.log 2>&1; sleep 5; done'
@@ -307,6 +355,7 @@ run_node() {
                 echo -e "[$(get_timestamp)] ${RED}无法获取 Nexus 节点 PID，请检查日志：~/nexus.log${NC}"
                 cat ~/nexus.log
                 exit 1
+
             fi
         else
             echo -e "[$(get_timestamp)] ${RED}启动 screen 会话失败，请检查日志：~/nexus.log${NC}"
@@ -323,13 +372,13 @@ run_node() {
     while true; do
         sleep 14400
         if screen -list | grep -q "nexus_node"; then
-            echo -e "[$(get_timestamp)] ${BLUE}检测到节点正在运行 (screen 会话：nexus_node, PID: $NODE_PID)，正在重启...${NC}"
+            echo -e "[$(get_timestamp)] ${BLUE}检测到节点正在运行 (screen 会话：nexus_node, PID: $NODE_PID)，正在重启动...${NC}"
             screen -S nexus_node -X quit 2>/dev/null || {
                 echo -e "[$(get_timestamp)] ${RED}无法终止 screen 会话，请检查权限或会话状态。${NC}"
             }
-            if [[ -n "$NODE_PID" ]] && ps -p $NODE_PID > /dev/null; then
-                kill $NODE_PID 2>/dev/null
-                wait $NODE_PID 2>/dev/null
+            if [[ -n "$NODE_PID" ]] && ps -p "$NODE_PID" > /dev/null; then
+                kill "$NODE_PID" 2>/dev/null
+                wait "$NODE_PID" 2>/dev/null || echo -e "[$(get_timestamp)] ${RED}无法终止 PID $NODE_PID 的进程。${NC}"
             fi
         else
             echo -e "[$(get_timestamp)] ${YELLOW}节点 screen 会话 (nexus_node) 已不存在，将重新启动...${NC}"
