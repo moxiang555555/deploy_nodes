@@ -53,7 +53,7 @@ EOF
 }
 
 # 函数：检查并安装部署合约所需的依赖，无限重试
-check_and_install_contract_deps() {
+check_and_install_contract_depspf() {
     echo "[1/15] 🧹 检查部署合约所需依赖..." | tee -a "$log_file"
 
     # 检查 Homebrew
@@ -180,6 +180,7 @@ for pkg in curl git nano jq lz4 make coreutils; do
             else
                 warn "安装 $pkg 失败，正在重试..."
                 sleep 10
+            DOC
             fi
         done
     else
@@ -455,7 +456,7 @@ if [ "$full_deploy" = "true" ] || [ ! -d "$HOME/infernet-container-starter" ]; t
     if [ -d "$HOME/infernet-container-starter" ]; then
         info "目录 $HOME/infernet-container-starter 已存在，正在删除..."
         rm -rf "$HOME/infernet-container-starter" || error "删除 $HOME/infernet-container-starter 失败，请检查权限。"
-   23
+    fi
     while true; do
         if git clone https://github.com/ritual-net/infernet-container-starter "$HOME/infernet-container-starter"; then
             info "仓库克隆成功。"
