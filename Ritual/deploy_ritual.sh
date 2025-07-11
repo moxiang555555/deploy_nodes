@@ -180,7 +180,6 @@ for pkg in curl git nano jq lz4 make coreutils; do
             else
                 warn "安装 $pkg 失败，正在重试..."
                 sleep 10
-            DOC
             fi
         done
     else
@@ -563,7 +562,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     tty: true
     networks: [ network ]
-    depends_on: [ redis, infernet-anvil ]
+    depends_on: [ redis ]
     restart: on-failure
     extra_hosts: [ "host.docker.internal:host-gateway" ]
     stop_grace_period: 1m
@@ -587,12 +586,6 @@ services:
     networks: [ network ]
     restart: on-failure
     container_name: infernet-fluentbit
-  infernet-anvil:
-    image: ritualnetwork/infernet-anvil:1.0.0
-    command: --host 0.0.0.0 --port 5001 --load-state infernet_deployed.json -b 1
-    ports: [ "8545:5001" ]
-    networks: [ network ]
-    container_name: infernet-anvil
 networks:
   network:
 volumes:
