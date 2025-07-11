@@ -128,25 +128,29 @@ while [ $ATTEMPT -le $MAX_RETRIES ]; do
         done
         if [ "$all_files_present" = false ]; then
             mkdir -p "$HOME/rl-swarm-0.5.3/user/keys" "$HOME/rl-swarm-0.5.3/user/modal-login"
-            info "缺少必要文件，直接跳转到查看 Docker 日志..."
-            echo "[9/15] 查看 Docker 日志..." | tee -a "$log_file"
-            info "正在显示 swarm-cpu 容器实时日志（按 Ctrl+C 停止查看日志，容器将继续运行）..."
-            exec docker-compose logs -f swarm-cpu
+            info "缺少必要文件，将在最后查看 Docker 日志..."
+            skip_copy=true
+        else
+            # 复制文件
+            for relpath in "${FILES[@]}"; do
+                src="$HOME/rl-swarm-0.5/user/$relpath"
+                dst="$HOME/rl-swarm-0.5.3/user/$relpath"
+                if [ -f "$src" ]; then
+                    mkdir -p "$(dirname "$dst")"
+                    cp "$src" "$dst" && info "复制成功：$relpath" || info "警告：复制 $relpath 失败"
+                fi
+            done
+            skip_copy=false
         fi
 
-        # 复制文件
-        for relpath in "${FILES[@]}"; do
-            src="$HOME/rl-swarm-0.5/user/$relpath"
-            dst="$HOME/rl-swarm-0.5.3/user/$relpath"
-            if [ -f "$src" ]; then
-                mkdir -p "$(dirname "$dst")"
-                cp "$src" "$dst" && info "复制成功：$relpath" || info "警告：复制 $relpath 失败"
-            fi
-        done
-
         echo "[9/15] 跳过权限修改..." | tee -a "$log_file"
+        echo "[10/15] 占位..." | tee -a "$log_file"
+        echo "[11/15] 占位..." | tee -a "$log_file"
+        echo "[12/15] 占位..." | tee -a "$log_file"
+        echo "[13/15] 占位..." | tee -a "$log_file"
+        echo "[14/15] 占位..." | tee -a "$log_file"
 
-        echo "[10/15] 查看 Docker 日志..." | tee -a "$log_file"
+        echo "[15/15] 查看 Docker 日志..." | tee -a "$log_file"
         info "正在显示 swarm-cpu 容器实时日志（按 Ctrl+C 停止查看日志，容器将继续运行）..."
         exec docker-compose logs -f swarm-cpu
     else
@@ -159,9 +163,3 @@ done
 if [ $ATTEMPT -gt $MAX_RETRIES ]; then
     error "连续失败 $MAX_RETRIES 次，终止。请检查 Docker 配置或网络"
 fi
-
-echo "[11/15] 启动完成，容器运行中..." | tee -a "$log_file"
-info "容器在后台运行，按 Ctrl+C 停止脚本（容器将继续运行）"
-info "可使用 'docker-compose down' 停止容器"
-
-echo "[DONE] RL Swarm 容器部署完成" | tee -a "$log_file"
