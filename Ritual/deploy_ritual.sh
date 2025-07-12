@@ -223,17 +223,10 @@ else
     info "Docker Compose 已安装，版本：$(docker-compose --version)"
 fi
 
-# 检查端口是否占用
-echo "[6/15] 🔐 检查端口..." | tee -a "$log_file"
-for port in 4000 6379 8545 5001; do
-    if lsof -i :$port &> /dev/null; then
-        error "端口 $port 已被占用，请释放端口或修改配置后重试。"
-    fi
-done
-info "Redis 端口 6379 被限制为本地访问，无需外部开放。"
+
 
 # 选择部署模式
-echo "[7/15] 🛠️ 选择部署模式..." | tee -a "$log_file"
+echo "[6/15] 🛠️ 选择部署模式..." | tee -a "$log_file"
 info "请选择 Infernet 节点的部署模式："
 select yn in "是 (全新部署，清除并重装)" "否 (继续现有环境)" "直接部署合约" "更新配置并重启容器" "退出"; do
     case $yn in
@@ -297,6 +290,15 @@ select yn in "是 (全新部署，清除并重装)" "否 (继续现有环境)" "
     esac
 done
 
+# 检查端口是否占用
+echo "[7/15] 🔐 检查端口..." | tee -a "$log_file"
+for port in 4000 6379 8545 5001; do
+    if lsof -i :$port &> /dev/null; then
+        error "端口 $port 已被占用，请释放端口或修改配置后重试。"
+    fi
+done
+info "Redis 端口 6379 被限制为本地访问，无需外部开放。"
+
 # 加载或提示输入配置
 if [ "$skip_to_deploy" = "true" ] || [ "$yn" != "退出" ]; then
     echo "[8/15] 📝 加载或输入配置..." | tee -a "$log_file"
@@ -318,7 +320,7 @@ fi
 
 # 更新配置并重启容器模式
 if [ "$update_config_and_restart" = "true" ]; then
-    echo "[10/15] 🔧 更新配置并重启容器..." | tee -a "$log_file"
+    echo "[9/15] 🔧 更新配置并重启容器..." | tee -a "$log_file"
     
     # 进入项目目录
     cd "$HOME/infernet-container-starter" || error "无法进入项目目录"
@@ -370,7 +372,7 @@ if [ "$update_config_and_restart" = "true" ]; then
     done
     
     # 容器将在前台运行，脚本到此结束
-    echo "[11/11] ✅ 配置更新完成！容器已在前台启动。" | tee -a "$log_file"
+    echo "[10/10] ✅ 配置更新完成！容器已在前台启动。" | tee -a "$log_file"
     info "容器正在前台运行，按 Ctrl+C 可停止容器"
     info "容器启动后，脚本将自动退出"
     exit 0
@@ -379,7 +381,7 @@ fi
 # 直接部署合约模式：检查并安装依赖
 if [ "$skip_to_deploy" = "true" ]; then
     check_and_install_contract_deps
-    echo "[10/15] 🚀 开始部署合约..." | tee -a "$log_file"
+    echo "[9/15] 🚀 开始部署合约..." | tee -a "$log_file"
     cd "$HOME/infernet-container-starter/projects/hello-world/contracts" || error "无法进入 $HOME/infernet-container-starter/projects/hello-world/contracts 目录"
 
     # 安装 Forge 库，无限重试
@@ -512,15 +514,15 @@ EOF
     fi
     rm -f "$deploy_log"
 
-    echo "[11/15] ✅ 部署完成！使用 \`docker ps\` 查看节点状态。" | tee -a "$log_file"
+    echo "[10/15] ✅ 部署完成！使用 \`docker ps\` 查看节点状态。" | tee -a "$log_file"
     info "请检查日志：docker logs infernet-node"
     info "下一步：可运行 'forge script script/CallContract.s.sol --rpc-url $RPC_URL --private-key $PRIVATE_KEY' 来再次调用合约。"
     exit 0
 fi
 
-echo "[10/15] 🧠 开始部署..." | tee -a "$log_file"
+echo "[9/15] 🧠 开始部署..." | tee -a "$log_file"
 
-echo "[11/15] 📁 克隆仓库..." | tee -a "$log_file"
+echo "[10/15] 📁 克隆仓库..." | tee -a "$log_file"
 if [ "$full_deploy" = "true" ] || [ ! -d "$HOME/infernet-container-starter" ]; then
     if [ -d "$HOME/infernet-container-starter" ]; then
         info "目录 $HOME/infernet-container-starter 已存在，正在删除..."
@@ -540,7 +542,7 @@ else
 fi
 cd "$HOME/infernet-container-starter" || error "无法进入 $HOME/infernet-container-starter 目录。"
 
-echo "[12/15] 📦 拉取 hello-world 容器..." | tee -a "$log_file"
+echo "[11/15] 📦 拉取 hello-world 容器..." | tee -a "$log_file"
 while true; do
     if curl -s --connect-timeout 5 https://registry-1.docker.io/ > /dev/null; then
         break
@@ -562,7 +564,7 @@ while true; do
     ((attempt++))
 done
 
-echo "[13/15] 🛠️ 写入项目配置 config.json..." | tee -a "$log_file"
+echo "[12/15] 🛠️ 写入项目配置 config.json..." | tee -a "$log_file"
 if [ ! -d "$HOME/infernet-container-starter/deploy" ]; then
     mkdir -p "$HOME/infernet-container-starter/deploy" || error "创建 deploy 目录失败。"
 fi
@@ -621,7 +623,7 @@ if ! cp "$HOME/infernet-container-starter/deploy/config.json" "$HOME/infernet-co
     error "复制 config.json 到 projects/hello-world/container 失败。"
 fi
 
-echo "[14/15] 🛠️ 更新 docker-compose.yaml..." | tee -a "$log_file"
+echo "[13/15] 🛠️ 更新 docker-compose.yaml..." | tee -a "$log_file"
 cat <<'EOF' > "$HOME/infernet-container-starter/deploy/docker-compose.yaml"
 services:
   node:
@@ -664,7 +666,7 @@ volumes:
   redis-data:
 EOF
 
-echo "[15/15] 🐳 启动 Docker 容器..." | tee -a "$log_file"
+echo "[14/15] 🐳 启动 Docker 容器..." | tee -a "$log_file"
 attempt=1
 while true; do
     info "尝试启动 Docker 容器 （第 $attempt 次）..."
@@ -678,7 +680,7 @@ while true; do
     ((attempt++))
 done
 
-echo "[16/16] 🛠️ 安装 Foundry..." | tee -a "$log_file"
+echo "[15/15] 🛠️ 安装 Foundry..." | tee -a "$log_file"
 if ! command -v forge &> /dev/null; then
     info "Foundry 未安装，正在安装..."
     while true; do
@@ -701,7 +703,7 @@ else
     info "Foundry 已安装，forge 版本：$(forge --version)"
 fi
 
-echo "[17/17] 📚 安装 Forge 库..." | tee -a "$log_file"
+echo "[16/16] 📚 安装 Forge 库..." | tee -a "$log_file"
 cd "$HOME/infernet-container-starter/projects/hello-world/contracts"
 if ! rm -rf lib/forge-std lib/infernet-sdk; then
     warn "清理旧 Forge 库失败，继续安装..."
@@ -725,7 +727,7 @@ while true; do
     fi
 done
 
-echo "[18/18] 🔧 写入部署脚本..." | tee -a "$log_file"
+echo "[17/17] 🔧 写入部署脚本..." | tee -a "$log_file"
 cat <<'EOF' > script/Deploy.s.sol
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 pragma solidity ^0.8.13;
@@ -746,7 +748,7 @@ contract Deploy is Script {
 }
 EOF
 
-echo "[19/19] 📦 写入 Makefile..." | tee -a "$log_file"
+echo "[18/18] 📦 写入 Makefile..." | tee -a "$log_file"
 cat <<'EOF' > "$HOME/infernet-container-starter/projects/hello-world/contracts/Makefile"
 .PHONY: deploy
 sender := $PRIVATE_KEY
@@ -755,7 +757,7 @@ deploy:
     @PRIVATE_KEY=$(sender) forge script script/Deploy.s.sol:Deploy --broadcast --rpc-url $(RPC_URL)
 EOF
 
-echo "[20/20] 🚀 开始部署合约..." | tee -a "$log_file"
+echo "[19/19] 🚀 开始部署合约..." | tee -a "$log_file"
 cd "$HOME/infernet-container-starter/projects/hello-world/contracts" || error "无法进入 $HOME/infernet-container-starter/projects/hello-world/contracts 目录"
 attempt=1
 while true; do
@@ -845,6 +847,6 @@ else
 fi
 rm -f "$deploy_log"
 
-echo "[21/21] ✅ 部署完成！容器已在前台启动。" | tee -a "$log_file"
+echo "[20/20] ✅ 部署完成！容器已在前台启动。" | tee -a "$log_file"
 info "容器正在前台运行，按 Ctrl+C 可停止容器"
 info "容器启动后，脚本将自动退出"

@@ -7,13 +7,9 @@ RED='\033[0;31m'
 YELLOW='\033[0;33m'
 NC='\033[0m' # 无颜色
 
-<<<<<<< HEAD
-=======
 # 日志文件设置
 LOG_FILE="$HOME/nexus.log"
 MAX_LOG_SIZE=10485760 # 10MB，日志大小限制
-
->>>>>>> 198896042f925d3cef8fb6e4fe7da0cd7e2a134d
 # 检测操作系统
 OS=$(uname -s)
 case "$OS" in
@@ -30,11 +26,7 @@ case "$OS" in
             OS_TYPE="Linux"
         fi
         ;;
-<<<<<<< HEAD
-    *)      echo -e "${RED}不支持的操作系统: $OS。本脚本仅支持 macOS、Ubuntu 和其他 Linux 发行版。${NC}" ; exit 1 ;;
-=======
     *) echo -e "${RED}不支持的操作系统: $OS。本脚本仅支持 macOS、Ubuntu 和其他 Linux 发行版。${NC}" ; exit 1 ;;
->>>>>>> 198896042f925d3cef8fb6e4fe7da0cd7e2a134d
 esac
 
 # 检测 shell 并设置配置文件
@@ -67,19 +59,11 @@ check_command() {
     fi
 }
 
-<<<<<<< HEAD
-# 配置 shell 环境变量
-configure_shell() {
-    local env_path="$1"
-    local env_var="export PATH=$env_path:\$PATH"
-    if [[ -f "$CONFIG_FILE" ]] && grep -q "$env_path" "$CONFIG_FILE"; then
-=======
 # 配置 shell 环境变量，避免重复写入
 configure_shell() {
     local env_path="$1"
     local env_var="export PATH=$env_path:\$PATH"
     if [[ -f "$CONFIG_FILE" ]] && grep -Fx "$env_var" "$CONFIG_FILE" > /dev/null; then
->>>>>>> 198896042f925d3cef8fb6e4fe7da0cd7e2a134d
         echo -e "${GREEN}环境变量已在 $CONFIG_FILE 中配置。${NC}"
     else
         echo -e "${BLUE}正在将环境变量添加到 $CONFIG_FILE...${NC}"
@@ -90,8 +74,6 @@ configure_shell() {
     fi
 }
 
-<<<<<<< HEAD
-=======
 # 日志轮转
 rotate_log() {
     if [[ -f "$LOG_FILE" && $(stat -f %z "$LOG_FILE" 2>/dev/null || stat -c %s "$LOG_FILE" 2>/dev/null) -ge $MAX_LOG_SIZE ]]; then
@@ -99,8 +81,6 @@ rotate_log() {
         echo -e "${YELLOW}日志文件已轮转，新日志将写入 $LOG_FILE${NC}"
     fi
 }
-
->>>>>>> 198896042f925d3cef8fb6e4fe7da0cd7e2a134d
 # 安装 Homebrew（macOS 和非 Ubuntu Linux）
 install_homebrew() {
     print_header "检查 Homebrew 安装"
@@ -116,10 +96,7 @@ install_homebrew() {
         configure_shell "/opt/homebrew/bin"
     else
         configure_shell "$HOME/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/bin"
-<<<<<<< HEAD
-        # Linux 上安装 gcc（Homebrew 依赖）
-=======
->>>>>>> 198896042f925d3cef8fb6e4fe7da0cd7e2a134d
+
         if ! check_command gcc; then
             echo -e "${BLUE}在 Linux 上安装 gcc（Homebrew 依赖）...${NC}"
             if command -v yum &> /dev/null; then
@@ -187,10 +164,7 @@ install_rust() {
         exit 1
     }
     source "$HOME/.cargo/env" 2>/dev/null || echo -e "${RED}无法加载 Rust 环境，请手动运行 'source ~/.cargo/env'。${NC}"
-<<<<<<< HEAD
-    # 永久添加环境变量
-=======
->>>>>>> 198896042f925d3cef8fb6e4fe7da0cd7e2a134d
+
     configure_shell "$HOME/.cargo/bin"
 }
 
@@ -208,13 +182,6 @@ configure_rust_target() {
     }
 }
 
-<<<<<<< HEAD
-log() {
-    echo -e "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
-}
-
-# 退出时的清理函数（有 exit）
-=======
 # 日志函数
 log() {
     echo -e "[$(date '+%Y-%m-%d %H:%M:%S %Z')] $1" | tee -a "$LOG_FILE"
@@ -222,7 +189,6 @@ log() {
 }
 
 # 退出时的清理函数
->>>>>>> 198896042f925d3cef8fb6e4fe7da0cd7e2a134d
 cleanup_exit() {
     log "${YELLOW}收到退出信号，正在清理 Nexus 节点进程和 screen 会话...${NC}"
     if screen -list | grep -q "nexus_node"; then
@@ -246,11 +212,7 @@ cleanup_exit() {
     exit 0
 }
 
-<<<<<<< HEAD
-# 重启时的清理函数（无 exit）
-=======
 # 重启时的清理函数
->>>>>>> 198896042f925d3cef8fb6e4fe7da0cd7e2a134d
 cleanup_restart() {
     log "${YELLOW}准备重启节点，先进行清理...${NC}"
     if screen -list | grep -q "nexus_node"; then
@@ -275,11 +237,7 @@ cleanup_restart() {
 
 trap 'cleanup_exit' SIGINT SIGTERM SIGHUP
 
-<<<<<<< HEAD
-# 安装或更新 Nexus CLI，失败重试3次，全部失败则警告
-=======
 # 安装或更新 Nexus CLI
->>>>>>> 198896042f925d3cef8fb6e4fe7da0cd7e2a134d
 install_nexus_cli() {
     local attempt=1
     local max_attempts=3
@@ -307,22 +265,13 @@ install_nexus_cli() {
     fi
 }
 
-<<<<<<< HEAD
-# 读取或设置 Node ID
-=======
 # 读取或设置 Node ID，添加5秒超时
->>>>>>> 198896042f925d3cef8fb6e4fe7da0cd7e2a134d
 get_node_id() {
     CONFIG_PATH="$HOME/.nexus/config.json"
     if [[ -f "$CONFIG_PATH" ]]; then
         CURRENT_NODE_ID=$(jq -r .node_id "$CONFIG_PATH" 2>/dev/null)
         if [[ -n "$CURRENT_NODE_ID" && "$CURRENT_NODE_ID" != "null" ]]; then
             log "${GREEN}检测到配置文件中的 Node ID：$CURRENT_NODE_ID${NC}"
-<<<<<<< HEAD
-            read -rp "是否使用此 Node ID? (Y/n): " use_old_id
-            if [[ "$use_old_id" =~ ^[Nn]$ ]]; then
-                read -rp "请输入新的 Node ID: " NODE_ID_TO_USE
-=======
             # 使用 read -t 5 实现5秒超时，默认选择 y
             echo -e "${BLUE}是否使用此 Node ID? (y/n, 默认 y，5秒后自动继续): ${NC}"
             use_old_id=""
@@ -335,7 +284,6 @@ get_node_id() {
                     log "${RED}无效的 Node ID，请输入只包含字母、数字或连字符的 ID。${NC}"
                     exit 1
                 fi
->>>>>>> 198896042f925d3cef8fb6e4fe7da0cd7e2a134d
                 jq --arg id "$NODE_ID_TO_USE" '.node_id = $id' "$CONFIG_PATH" > "$CONFIG_PATH.tmp" && mv "$CONFIG_PATH.tmp" "$CONFIG_PATH"
                 log "${GREEN}已更新 Node ID: $NODE_ID_TO_USE${NC}"
             else
@@ -344,13 +292,10 @@ get_node_id() {
         else
             log "${YELLOW}未检测到有效 Node ID，请输入新的 Node ID。${NC}"
             read -rp "请输入新的 Node ID: " NODE_ID_TO_USE
-<<<<<<< HEAD
-=======
             if [[ -z "$NODE_ID_TO_USE" || ! "$NODE_ID_TO_USE" =~ ^[a-zA-Z0-9-]+$ ]]; then
                 log "${RED}无效的 Node ID，请输入只包含字母、数字或连字符的 ID。${NC}"
                 exit 1
             fi
->>>>>>> 198896042f925d3cef8fb6e4fe7da0cd7e2a134d
             mkdir -p "$HOME/.nexus"
             echo "{\"node_id\": \"${NODE_ID_TO_USE}\"}" > "$CONFIG_PATH"
             log "${GREEN}已写入 Node ID: $NODE_ID_TO_USE 到 $CONFIG_PATH${NC}"
@@ -358,13 +303,10 @@ get_node_id() {
     else
         log "${YELLOW}未找到配置文件 $CONFIG_PATH，请输入 Node ID。${NC}"
         read -rp "请输入新的 Node ID: " NODE_ID_TO_USE
-<<<<<<< HEAD
-=======
         if [[ -z "$NODE_ID_TO_USE" || ! "$NODE_ID_TO_USE" =~ ^[a-zA-Z0-9-]+$ ]]; then
             log "${RED}无效的 Node ID，请输入只包含字母、数字或连字符的 ID。${NC}"
             exit 1
         fi
->>>>>>> 198896042f925d3cef8fb6e4fe7da0cd7e2a134d
         mkdir -p "$HOME/.nexus"
         echo "{\"node_id\": \"${NODE_ID_TO_USE}\"}" > "$CONFIG_PATH"
         log "${GREEN}已写入 Node ID: $NODE_ID_TO_USE 到 $CONFIG_PATH${NC}"
@@ -374,15 +316,6 @@ get_node_id() {
 # 启动节点
 start_node() {
     log "${BLUE}正在启动 Nexus 节点 (Node ID: $NODE_ID_TO_USE)...${NC}"
-<<<<<<< HEAD
-    screen -dmS nexus_node bash -c "nexus-network start --node-id '${NODE_ID_TO_USE}' > ~/nexus.log 2>&1"
-    sleep 2
-    if screen -list | grep -q "nexus_node"; then
-        log "${GREEN}Nexus 节点已在 screen 会话（nexus_node）中启动，日志输出到 ~/nexus.log${NC}"
-    else
-        log "${RED}启动 screen 会话失败，请检查日志：~/nexus.log${NC}"
-        cat ~/nexus.log
-=======
     rotate_log
     screen -dmS nexus_node bash -c "nexus-network start --node-id '${NODE_ID_TO_USE}' >> $LOG_FILE 2>&1"
     sleep 2
@@ -391,27 +324,10 @@ start_node() {
     else
         log "${RED}启动 screen 会话失败，请检查日志：$LOG_FILE${NC}"
         cat "$LOG_FILE"
->>>>>>> 198896042f925d3cef8fb6e4fe7da0cd7e2a134d
         exit 1
     fi
 }
 
-<<<<<<< HEAD
-# 主循环：每4小时重启节点
-main() {
-    get_node_id
-    while true; do
-        install_nexus_cli
-        cleanup_restart  # 每次重启前清理
-        start_node
-        log "${BLUE}节点将每隔4小时自动重启...${NC}"
-        sleep 14400
-        cleanup_restart  # 重启前清理
-    done
-}
-
-main
-=======
 # 主循环
 main() {
     get_node_id
@@ -424,6 +340,3 @@ main() {
         cleanup_restart
     done
 }
-
-main
->>>>>>> 198896042f925d3cef8fb6e4fe7da0cd7e2a134d
