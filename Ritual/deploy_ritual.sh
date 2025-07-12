@@ -170,7 +170,7 @@ else
 fi
 
 echo "[3/15] 🧹 安装依赖..." | tee -a "$log_file"
-for pkg in curl git nano jq lz4 make coreutils; do
+for pkg in curl git nano jq lz4 make; do
     if ! command -v $pkg &> /dev/null; then
         info "安装 $pkg..."
         while true; do
@@ -186,6 +186,9 @@ for pkg in curl git nano jq lz4 make coreutils; do
         info "$pkg 已安装。"
     fi
 done
+
+# 检查 coreutils（macOS 预装，无需安装）
+info "coreutils 已预装在 macOS 中，无需安装。"
 
 # 检查并安装 Docker
 echo "[4/15] 🐳 检查 Docker..." | tee -a "$log_file"
