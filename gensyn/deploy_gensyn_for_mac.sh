@@ -100,7 +100,7 @@ while [ $ATTEMPT -le $MAX_RETRIES ]; do
     fi
 
     # 启动容器（后台模式，强制重建）
-    if docker-compose up --build --force-recreate swarm-cpu; then
+    if docker-compose up -d --build --force-recreate swarm-cpu; then
         info "容器启动成功（后台运行）"
 
         echo "[7/9] 等待 user 文件夹生成..." | tee -a "$log_file"
