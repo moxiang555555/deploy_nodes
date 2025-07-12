@@ -187,8 +187,21 @@ for pkg in curl git nano jq lz4 make; do
     fi
 done
 
-# 检查 coreutils（macOS 预装，无需安装）
-info "coreutils 已预装在 macOS 中，无需安装。"
+# 检查 coreutils（通过检查其中一个工具来判断是否已安装）
+if ! command -v gtimeout &> /dev/null && ! brew list | grep -q coreutils; then
+    info "安装 coreutils..."
+    while true; do
+        if brew install coreutils; then
+            info "coreutils 安装成功。"
+            break
+        else
+            warn "安装 coreutils 失败，正在重试..."
+            sleep 10
+        fi
+    done
+else
+    info "coreutils 已安装。"
+fi
 
 # 检查并安装 Docker
 echo "[4/15] 🐳 检查 Docker..." | tee -a "$log_file"
