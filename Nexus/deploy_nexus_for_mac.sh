@@ -341,8 +341,5 @@ main() {
     done
 }
 
-<<<<<<< HEAD
 main
-=======
-main
->>>>>>> ab4bdcf3fc3c352715b337c5c5d350d72120701a
+
