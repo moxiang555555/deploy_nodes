@@ -1,4 +1,8 @@
+<<<<<<< HEAD
  #!/bin/bash
+=======
+#!/bin/bash
+>>>>>>> 198896042f925d3cef8fb6e4fe7da0cd7e2a134d
 
 set -euo pipefail
 
@@ -72,7 +76,10 @@ if [ ! -d "$HOME/rl-swarm-0.5" ]; then
     info "- $HOME/rl-swarm-0.5.3/user/modal-login/userApiKey.json"
     info "- $HOME/rl-swarm-0.5.3/user/modal-login/userData.json"
     mkdir -p "$HOME/rl-swarm-0.5.3/user/keys" "$HOME/rl-swarm-0.5.3/user/modal-login"
+<<<<<<< HEAD
     read -p "按 Enter 键继续（确保文件已放入 $HOME/rl-swarm-0.5.3/user/）..."
+=======
+>>>>>>> 198896042f925d3cef8fb6e4fe7da0cd7e2a134d
 fi
 
 cd "$HOME/rl-swarm-0.5.3" || error "进入目录失败"
@@ -112,6 +119,7 @@ while [ $ATTEMPT -le $MAX_RETRIES ]; do
         done
         info "检测到目录：$TARGET_DIR"
 
+<<<<<<< HEAD
         echo "[8/15] 复制 user 文件到临时目录..." | tee -a "$log_file"
         # 检查并复制 swarm.pem
         if [ -f "$HOME/rl-swarm-0.5/user/keys/swarm.pem" ]; then
@@ -148,11 +156,16 @@ while [ $ATTEMPT -le $MAX_RETRIES ]; do
         fi
 
         echo "[9/15] 复制 user 文件..." | tee -a "$log_file"
+=======
+        echo "[8/15] 检查 user 文件..." | tee -a "$log_file"
+        # 检查所需文件
+>>>>>>> 198896042f925d3cef8fb6e4fe7da0cd7e2a134d
         FILES=(
             "keys/swarm.pem"
             "modal-login/userApiKey.json"
             "modal-login/userData.json"
         )
+<<<<<<< HEAD
         missing_files=false
         for relpath in "${FILES[@]}"; do
             src="$HOME/rl-swarm-0.5/user/$relpath"
@@ -186,6 +199,43 @@ while [ $ATTEMPT -le $MAX_RETRIES ]; do
         info "容器在后台运行，按 Ctrl+C 停止脚本（容器将继续运行）"
         info "可使用 'docker-compose down' 停止容器"
         break
+=======
+        all_files_present=true
+        for relpath in "${FILES[@]}"; do
+            if [ ! -f "$HOME/rl-swarm-0.5/user/$relpath" ]; then
+                all_files_present=false
+                info "警告：缺少文件：$HOME/rl-swarm-0.5/user/$relpath"
+                info "请手动将 $relpath 放入 $HOME/rl-swarm-0.5.3/user/$relpath"
+            fi
+        done
+        if [ "$all_files_present" = false ]; then
+            mkdir -p "$HOME/rl-swarm-0.5.3/user/keys" "$HOME/rl-swarm-0.5.3/user/modal-login"
+            info "缺少必要文件，将在最后查看 Docker 日志..."
+            skip_copy=true
+        else
+            # 复制文件
+            for relpath in "${FILES[@]}"; do
+                src="$HOME/rl-swarm-0.5/user/$relpath"
+                dst="$HOME/rl-swarm-0.5.3/user/$relpath"
+                if [ -f "$src" ]; then
+                    mkdir -p "$(dirname "$dst")"
+                    cp "$src" "$dst" && info "复制成功：$relpath" || info "警告：复制 $relpath 失败"
+                fi
+            done
+            skip_copy=false
+        fi
+
+        echo "[9/15] 跳过权限修改..." | tee -a "$log_file"
+        echo "[10/15] 占位..." | tee -a "$log_file"
+        echo "[11/15] 占位..." | tee -a "$log_file"
+        echo "[12/15] 占位..." | tee -a "$log_file"
+        echo "[13/15] 占位..." | tee -a "$log_file"
+        echo "[14/15] 占位..." | tee -a "$log_file"
+
+        echo "[15/15] 查看 Docker 日志..." | tee -a "$log_file"
+        info "正在显示 swarm-cpu 容器实时日志（按 Ctrl+C 停止查看日志，容器将继续运行）..."
+        exec docker-compose logs -f swarm-cpu
+>>>>>>> 198896042f925d3cef8fb6e4fe7da0cd7e2a134d
     else
         info "第 $ATTEMPT 次启动失败，3 秒后重试..."
         ((ATTEMPT++))
@@ -196,5 +246,8 @@ done
 if [ $ATTEMPT -gt $MAX_RETRIES ]; then
     error "连续失败 $MAX_RETRIES 次，终止。请检查 Docker 配置或网络"
 fi
+<<<<<<< HEAD
 
 echo "[DONE] RL Swarm 容器部署完成" | tee -a "$log_file"
+=======
+>>>>>>> 198896042f925d3cef8fb6e4fe7da0cd7e2a134d
