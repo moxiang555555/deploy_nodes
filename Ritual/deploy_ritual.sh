@@ -519,8 +519,8 @@ cat <<EOF > "$HOME/infernet-container-starter/deploy/config.json"
     },
     "snapshot_sync": {
       "sleep": 3,
-      "batch_size": 500,
-      "starting_sub_id": 240000,
+      "batch_size": 100,
+      "starting_sub_id": 262002,
       "sync_period": 30
     }
   },
