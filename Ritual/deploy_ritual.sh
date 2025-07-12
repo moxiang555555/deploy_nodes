@@ -348,6 +348,15 @@ if [ "$update_config_and_restart" = "true" ]; then
     # 进入deploy目录
     cd deploy || error "无法进入deploy目录"
     
+    # 检查并更新 docker-compose.yml 中的 depends_on 设置
+    info "检查并更新 docker-compose.yml 中的 depends_on 设置..."
+    if grep -q 'depends_on: \[ redis, infernet-anvil \]' docker-compose.yml; then
+        sed -i.bak 's/depends_on: \[ redis, infernet-anvil \]/depends_on: [ redis ]/' docker-compose.yml
+        info "已修改 depends_on 配置。备份文件保存在：docker-compose.yml.bak"
+    else
+        info "depends_on 配置已正确，无需修改。"
+    fi
+    
     # 停止容器
     info "正在停止现有容器..."
     if docker-compose down; then
@@ -356,12 +365,12 @@ if [ "$update_config_and_restart" = "true" ]; then
         warn "停止容器时出现警告，继续执行..."
     fi
     
-    # 启动容器
-    info "正在启动容器..."
+    # 启动指定服务：node、redis、fluentbit
+    info "正在启动指定服务：node、redis、fluentbit..."
     attempt=1
     while true; do
         info "尝试启动容器 （第 $attempt 次）..."
-        if docker-compose up; then
+        if docker-compose up node redis fluentbit; then
             info "容器启动成功"
             break
         else
