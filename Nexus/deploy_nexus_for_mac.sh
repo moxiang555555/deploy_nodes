@@ -340,3 +340,5 @@ main() {
         cleanup_restart
     done
 }
+
+main
