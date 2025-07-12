@@ -235,7 +235,7 @@ info "Redis 端口 6379 被限制为本地访问，无需外部开放。"
 # 选择部署模式
 echo "[7/15] 🛠️ 选择部署模式..." | tee -a "$log_file"
 info "请选择 Infernet 节点的部署模式："
-select yn in "是 (全新部署，清除并重装)" "否 (继续现有环境)" "直接部署合约" "退出"; do
+select yn in "是 (全新部署，清除并重装)" "否 (继续现有环境)" "直接部署合约" "更新配置并重启容器" "退出"; do
     case $yn in
         "是 (全新部署，清除并重装)")
             info "正在清除旧节点与数据..."
@@ -280,6 +280,16 @@ select yn in "是 (全新部署，清除并重装)" "否 (继续现有环境)" "
             full_deploy=false
             break
             ;;
+        "更新配置并重启容器")
+            info "将更新配置文件并重启容器..."
+            if [ ! -d "$HOME/infernet-container-starter" ] || [ ! -d "$HOME/infernet-container-starter/deploy" ]; then
+                error "未找到部署目录，请先运行完整部署流程。"
+            fi
+            update_config_and_restart=true
+            skip_to_deploy=false
+            full_deploy=false
+            break
+            ;;
         "退出")
             warn "脚本已退出，未做任何更改。"
             exit 0
@@ -304,6 +314,66 @@ if [ "$skip_to_deploy" = "true" ] || [ "$yn" != "退出" ]; then
             sleep 10
         fi
     done
+fi
+
+# 更新配置并重启容器模式
+if [ "$update_config_and_restart" = "true" ]; then
+    echo "[10/15] 🔧 更新配置并重启容器..." | tee -a "$log_file"
+    
+    # 进入项目目录
+    cd "$HOME/infernet-container-starter" || error "无法进入项目目录"
+    
+    # 更新配置文件
+    info "正在更新配置文件..."
+    if [ ! -f "deploy/config.json" ]; then
+        error "未找到配置文件 deploy/config.json"
+    fi
+    
+    # 备份原配置文件
+    cp deploy/config.json deploy/config.json.backup.$(date +%Y%m%d_%H%M%S)
+    info "已备份原配置文件"
+    
+    # 更新配置文件中的三个参数
+    info "正在更新配置文件中的参数..."
+    jq '.chain.snapshot_sync.batch_size = 100 | .chain.snapshot_sync.starting_sub_id = 262002 | .chain.snapshot_sync.retry_delay = 60' deploy/config.json > deploy/config.json.tmp
+    mv deploy/config.json.tmp deploy/config.json
+    
+    info "已更新以下参数："
+    info "- batch_size: 100"
+    info "- starting_sub_id: 262002" 
+    info "- retry_delay: 60"
+    
+    # 进入deploy目录
+    cd deploy || error "无法进入deploy目录"
+    
+    # 停止容器
+    info "正在停止现有容器..."
+    if docker-compose down; then
+        info "容器已停止"
+    else
+        warn "停止容器时出现警告，继续执行..."
+    fi
+    
+    # 启动容器
+    info "正在启动容器..."
+    attempt=1
+    while true; do
+        info "尝试启动容器 （第 $attempt 次）..."
+        if docker-compose up; then
+            info "容器启动成功"
+            break
+        else
+            warn "启动容器失败，正在重试..."
+            sleep 10
+        fi
+        ((attempt++))
+    done
+    
+    # 容器将在前台运行，脚本到此结束
+    echo "[11/11] ✅ 配置更新完成！容器已在前台启动。" | tee -a "$log_file"
+    info "容器正在前台运行，按 Ctrl+C 可停止容器"
+    info "容器启动后，脚本将自动退出"
+    exit 0
 fi
 
 # 直接部署合约模式：检查并安装依赖
@@ -521,7 +591,8 @@ cat <<EOF > "$HOME/infernet-container-starter/deploy/config.json"
       "sleep": 3,
       "batch_size": 100,
       "starting_sub_id": 262002,
-      "sync_period": 30
+      "sync_period": 30,
+      "retry_delay": 60
     }
   },
   "startup_wait": 1.0,
@@ -597,7 +668,7 @@ echo "[15/15] 🐳 启动 Docker 容器..." | tee -a "$log_file"
 attempt=1
 while true; do
     info "尝试启动 Docker 容器 （第 $attempt 次）..."
-    if docker-compose -f "$HOME/infernet-container-starter/deploy/docker-compose.yaml" up -d; then
+    if docker-compose -f "$HOME/infernet-container-starter/deploy/docker-compose.yaml" up; then
         info "Docker 容器启动成功。"
         break
     else
@@ -774,6 +845,6 @@ else
 fi
 rm -f "$deploy_log"
 
-echo "[21/21] ✅ 部署完成！使用 \`docker ps\` 查看节点状态。" | tee -a "$log_file"
-info "请检查日志：docker logs infernet-node"
-info "下一步：可运行 'forge script script/CallContract.s.sol --rpc-url $RPC_URL --private-key $PRIVATE_KEY' 来再次调用合约。"
+echo "[21/21] ✅ 部署完成！容器已在前台启动。" | tee -a "$log_file"
+info "容器正在前台运行，按 Ctrl+C 可停止容器"
+info "容器启动后，脚本将自动退出"
