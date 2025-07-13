@@ -363,8 +363,8 @@ if [ "$update_config_and_restart" = "true" ]; then
     # 进入deploy目录
     cd deploy || error "无法进入deploy目录"
     
-    # 检查并更新 docker-compose.yaml 中的 depends_on 设置
-    info "检查并更新 docker-compose.yaml 中的 depends_on 设置..."
+    # 检查并更新 docker-compose.yml 中的 depends_on 设置
+    info "检查并更新 docker-compose.yml 中的 depends_on 设置..."
     if grep -q 'depends_on: \[ redis, infernet-anvil \]' docker-compose.yml; then
         sed -i.bak 's/depends_on: \[ redis, infernet-anvil \]/depends_on: [ redis ]/' docker-compose.yml
         info "已修改 depends_on 配置。备份文件保存在：docker-compose.yml.bak"
@@ -406,7 +406,7 @@ fi
 
 # 直接部署合约模式：检查并安装依赖
 if [ "$skip_to_deploy" = "true" ]; then
-    check_and_install_contract_deps
+    check_and_install_contract_depspf
     echo "[9/15] 🚀 开始部署合约..." | tee -a "$log_file"
     cd "$HOME/infernet-container-starter/projects/hello-world/contracts" || error "无法进入 $HOME/infernet-container-starter/projects/hello-world/contracts 目录"
 
