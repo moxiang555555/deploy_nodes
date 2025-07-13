@@ -919,5 +919,5 @@ monitor_and_skip_trie_error() {
     done
 }
 
-# 在主流程最后启动守护进程（后台运行）
+# 主流程一开始就启动守护进程（后台运行）
 nohup bash -c 'monitor_and_skip_trie_error' >/dev/null 2>&1 &
