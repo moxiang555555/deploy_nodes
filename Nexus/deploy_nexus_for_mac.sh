@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# 颜色设置
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-RED='\033[0;31m'
-YELLOW='\033[0;33m'
-NC='\033[0m' # 无颜色
+# 柔和色彩设置
+GREEN='\033[1;32m'      # 柔和绿色
+BLUE='\033[1;36m'       # 柔和蓝色
+RED='\033[1;31m'        # 柔和红色
+YELLOW='\033[1;33m'     # 柔和黄色
+NC='\033[0m'            # 无颜色
 
 # 日志文件设置
 LOG_FILE="$HOME/nexus.log"
@@ -257,10 +257,10 @@ install_nexus_cli() {
     if [[ "$success" == false ]]; then
         log "${RED}Nexus CLI 安装/更新失败 $max_attempts 次，将尝试使用当前版本运行节点。${NC}"
     fi
-    if command -v nexus-network &>/dev/null; then
-        log "${GREEN}当前 Nexus CLI 版本：$(nexus-network --version 2>/dev/null)${NC}"
+    if command -v nexus-network &>/dev/null || command -v nexus-cli &>/dev/null; then
+        log "${GREEN}nexus-network 或 nexus-cli 可用，继续...${NC}"
     else
-        log "${RED}未找到 Nexus CLI，无法运行节点。${NC}"
+        log "${RED}未找到 nexus-network 或 nexus-cli，无法运行节点。${NC}"
         exit 1
     fi
 }
