@@ -692,19 +692,24 @@ volumes:
   redis-data:
 EOF
 
-echo "[14/15] 🐳 启动 Docker 容器..." | tee -a "$log_file"
-attempt=1
-while true; do
-    info "尝试启动 Docker 容器 （第 $attempt 次）..."
-    if docker-compose -f "$HOME/infernet-container-starter/deploy/docker-compose.yaml" up; then
-        info "Docker 容器启动成功。"
-        break
-    else
-        warn "启动 Docker 容器失败，正在重试..."
-        sleep 10
-    fi
-    ((attempt++))
-done
+# 全新部署流程启动容器用后台模式
+if [ "$full_deploy" = "true" ]; then
+    echo "[14/15] 🐳 启动 Docker 容器..." | tee -a "$log_file"
+    attempt=1
+    while true; do
+        info "尝试启动 Docker 容器 （第 $attempt 次）..."
+        if docker-compose -f "$HOME/infernet-container-starter/deploy/docker-compose.yaml" up -d; then
+            info "Docker 容器启动成功。"
+            # 启动日志后台保存
+            (docker logs -f infernet-node > "$HOME/infernet-deployment.log" 2>&1 &)
+            break
+        else
+            warn "启动 Docker 容器失败，正在重试..."
+            sleep 10
+        fi
+        ((attempt++))
+    done
+fi
 
 echo "[15/15] 🛠️ 安装 Foundry..." | tee -a "$log_file"
 if ! command -v forge &> /dev/null; then
