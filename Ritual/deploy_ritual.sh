@@ -365,7 +365,7 @@ if [ "$update_config_and_restart" = "true" ]; then
     cd deploy || error "无法进入deploy目录"
     
     # 检查并更新 docker-compose.yml 中的 depends_on 设置
-    info "检查并更新 docker-compose.yml 中的 depends_on 设置..."
+    info "检查并更新 docker-compose.yaml 中的 depends_on 设置..."
     if grep -q 'depends_on: \[ redis, infernet-anvil \]' docker-compose.yml; then
         sed -i.bak 's/depends_on: \[ redis, infernet-anvil \]/depends_on: [ redis ]/' docker-compose.yml
         info "已修改 depends_on 配置。备份文件保存在：docker-compose.yml.bak"
@@ -601,7 +601,7 @@ cat <<EOF > "$HOME/infernet-container-starter/deploy/config.json"
 {
   "log_path": "infernet_node.log",
   "server": {
-    "port": 4000,
+    "port": 4001,
     "rate_limit": { "num_requests": 100, "period": 100 }
   },
   "chain": {
@@ -653,7 +653,7 @@ cat <<'EOF' > "$HOME/infernet-container-starter/deploy/docker-compose.yaml"
 services:
   node:
     image: ritualnetwork/infernet-node:1.4.0
-    ports: [ "0.0.0.0:4000:4000" ]
+    ports: [ "0.0.0.0:4001:4000" ]
     volumes:
       - ./config.json:/app/config.json
       - node-logs:/logs
