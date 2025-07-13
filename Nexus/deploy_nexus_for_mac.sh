@@ -322,9 +322,16 @@ start_node() {
     if screen -list | grep -q "nexus_node"; then
         log "${GREEN}Nexus 节点已在 screen 会话（nexus_node）中启动，日志输出到 $LOG_FILE${NC}"
     else
-        log "${RED}启动 screen 会话失败，请检查日志：$LOG_FILE${NC}"
-        cat "$LOG_FILE"
-        exit 1
+        log "${YELLOW}nexus-network 启动失败，尝试用 nexus-cli 启动...${NC}"
+        screen -dmS nexus_node bash -c "nexus-cli start --node-id '${NODE_ID_TO_USE}' >> $LOG_FILE 2>&1"
+        sleep 2
+        if screen -list | grep -q "nexus_node"; then
+            log "${GREEN}Nexus 节点已通过 nexus-cli 启动，日志输出到 $LOG_FILE${NC}"
+        else
+            log "${RED}nexus-cli 启动也失败，请检查日志：$LOG_FILE${NC}"
+            cat "$LOG_FILE"
+            exit 1
+        fi
     fi
 }
 
