@@ -353,7 +353,7 @@ if [ "$update_config_and_restart" = "true" ]; then
     
     # 更新配置文件中的参数
     info "正在更新配置文件中的参数..."
-    jq '.chain.snapshot_sync.batch_size = 10 | .chain.snapshot_sync.starting_sub_id = 300000 | .chain.snapshot_sync.retry_delay = 60' deploy/config.json > deploy/config.json.tmp
+    jq '.chain.snapshot_sync.batch_size = 10 | .chain.snapshot_sync.starting_sub_id = 262500 | .chain.snapshot_sync.retry_delay = 60' deploy/config.json > deploy/config.json.tmp
     mv deploy/config.json.tmp deploy/config.json
     
     info "已更新以下参数："
@@ -619,7 +619,7 @@ cat <<EOF > "$HOME/infernet-container-starter/deploy/config.json"
     "snapshot_sync": {
       "sleep": 3,
       "batch_size": 10,
-      "starting_sub_id": 300000,
+      "starting_sub_id": 262500,
       "sync_period": 30,
       "retry_delay": 60
     }
