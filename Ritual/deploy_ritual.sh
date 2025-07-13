@@ -351,20 +351,19 @@ if [ "$update_config_and_restart" = "true" ]; then
     cp deploy/config.json deploy/config.json.backup.$(date +%Y%m%d_%H%M%S)
     info "已备份原配置文件"
     
-    # 更新配置文件中的三个参数
+    # 只更新其他参数，不动starting_sub_id
     info "正在更新配置文件中的参数..."
-    jq '.chain.snapshot_sync.batch_size = 100 | .chain.snapshot_sync.starting_sub_id = 262002 | .chain.snapshot_sync.retry_delay = 60' deploy/config.json > deploy/config.json.tmp
+    jq '.chain.snapshot_sync.batch_size = 100 | .chain.snapshot_sync.retry_delay = 60' deploy/config.json > deploy/config.json.tmp
     mv deploy/config.json.tmp deploy/config.json
     
     info "已更新以下参数："
     info "- batch_size: 100"
-    info "- starting_sub_id: 262002" 
     info "- retry_delay: 60"
     
     # 进入deploy目录
     cd deploy || error "无法进入deploy目录"
     
-    # 检查并更新 docker-compose.yml 中的 depends_on 设置
+    # 检查并更新 docker-compose.yaml 中的 depends_on 设置
     info "检查并更新 docker-compose.yaml 中的 depends_on 设置..."
     if grep -q 'depends_on: \[ redis, infernet-anvil \]' docker-compose.yml; then
         sed -i.bak 's/depends_on: \[ redis, infernet-anvil \]/depends_on: [ redis ]/' docker-compose.yml
@@ -388,6 +387,8 @@ if [ "$update_config_and_restart" = "true" ]; then
         info "尝试启动容器 （第 $attempt 次）..."
         if docker-compose up node redis fluentbit; then
             info "容器启动成功"
+            # 启动日志后台保存
+            (docker logs -f infernet-node > "$HOME/infernet-deployment.log" 2>&1 &)
             break
         else
             warn "启动容器失败，正在重试..."
@@ -875,3 +876,43 @@ rm -f "$deploy_log"
 echo "[20/20] ✅ 部署完成！容器已在前台启动。" | tee -a "$log_file"
 info "容器正在前台运行，按 Ctrl+C 可停止容器"
 info "容器启动后，脚本将自动退出"
+
+# ========== 自动跳过missing trie node区块并重启节点 ===========
+monitor_and_skip_trie_error() {
+    LOG_FILE="$HOME/infernet-deployment.log"
+    CONFIG_FILE="$HOME/infernet-container-starter/deploy/config.json"
+    COMPOSE_DIR="$HOME/infernet-container-starter/deploy"
+    LAST_BATCH_FILE="/tmp/ritual_last_batch.txt"
+
+    info "启动missing trie node自动跳过守护进程..."
+    while true; do
+        # 检查日志中是否有新的 missing trie node 错误
+        line=$(grep "missing trie node" "$LOG_FILE" | tail -1)
+        if [[ -n "$line" ]]; then
+            # 提取 batch 区间
+            batch=$(echo "$line" | grep -oE "batch=\\([0-9]+, [0-9]+\\)")
+            if [[ $batch =~ ([0-9]+),\ ([0-9]+) ]]; then
+                start=${BASH_REMATCH[1]}
+                end=${BASH_REMATCH[2]}
+                new_start=$((end + 1))
+                # 检查是否已处理过该batch
+                if [[ -f "$LAST_BATCH_FILE" ]] && grep -q "$batch" "$LAST_BATCH_FILE"; then
+                    sleep 30
+                    continue
+                fi
+                echo "$batch" > "$LAST_BATCH_FILE"
+                warn "检测到missing trie node错误区块，自动跳过到 $new_start 并重启节点..."
+                # 修改 config.json
+                jq ".chain.snapshot_sync.starting_sub_id = $new_start" "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
+                # 重启docker服务
+                cd "$COMPOSE_DIR"
+                docker-compose restart node
+                sleep 60
+            fi
+        fi
+        sleep 30
+    done
+}
+
+# 在主流程最后启动守护进程（后台运行）
+nohup bash -c 'monitor_and_skip_trie_error' >/dev/null 2>&1 &
