@@ -358,7 +358,7 @@ if [ "$update_config_and_restart" = "true" ]; then
     
     info "已更新以下参数："
     info "- batch_size: 10"
-    info "- starting_sub_id: 300000"
+    info "- starting_sub_id: 262500"
     info "- retry_delay: 60"
     
     # 进入deploy目录
