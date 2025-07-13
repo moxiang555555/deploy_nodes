@@ -351,13 +351,14 @@ if [ "$update_config_and_restart" = "true" ]; then
     cp deploy/config.json deploy/config.json.backup.$(date +%Y%m%d_%H%M%S)
     info "已备份原配置文件"
     
-    # 只更新其他参数，不动starting_sub_id
+    # 更新配置文件中的参数
     info "正在更新配置文件中的参数..."
-    jq '.chain.snapshot_sync.batch_size = 100 | .chain.snapshot_sync.retry_delay = 60' deploy/config.json > deploy/config.json.tmp
+    jq '.chain.snapshot_sync.batch_size = 10 | .chain.snapshot_sync.starting_sub_id = 300000 | .chain.snapshot_sync.retry_delay = 60' deploy/config.json > deploy/config.json.tmp
     mv deploy/config.json.tmp deploy/config.json
     
     info "已更新以下参数："
-    info "- batch_size: 100"
+    info "- batch_size: 10"
+    info "- starting_sub_id: 300000"
     info "- retry_delay: 60"
     
     # 进入deploy目录
