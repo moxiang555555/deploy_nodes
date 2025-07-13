@@ -257,8 +257,10 @@ install_nexus_cli() {
     if [[ "$success" == false ]]; then
         log "${RED}Nexus CLI 安装/更新失败 $max_attempts 次，将尝试使用当前版本运行节点。${NC}"
     fi
-    if command -v nexus-network &>/dev/null || command -v nexus-cli &>/dev/null; then
-        log "${GREEN}nexus-network 或 nexus-cli 可用，继续...${NC}"
+    if command -v nexus-network &>/dev/null; then
+        log "${GREEN}nexus-network 版本：$(nexus-network --version 2>/dev/null)${NC}"
+    elif command -v nexus-cli &>/dev/null; then
+        log "${GREEN}nexus-cli 版本：$(nexus-cli --version 2>/dev/null)${NC}"
     else
         log "${RED}未找到 nexus-network 或 nexus-cli，无法运行节点。${NC}"
         exit 1
