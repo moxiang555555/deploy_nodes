@@ -307,10 +307,20 @@ select yn in "是 (全新部署，清除并重装)" "否 (继续现有环境)" "
 done
 
 # 检查端口是否占用
-echo "[7/15] 🔐 检查端口..." | tee -a "$log_file"
+info "检查端口占用..."
 for port in 4000 6379 8545 5001; do
     if lsof -i :$port &> /dev/null; then
-        error "端口 $port 已被占用，请释放端口或修改配置后重试。"
+        info "端口 $port 被占用，尝试自动kill占用进程..."
+        pids=$(lsof -t -i :$port)
+        for pid in $pids; do
+            if kill -9 $pid 2>/dev/null; then
+                info "已kill进程 $pid (占用端口 $port)"
+            else
+                warn "无法kill进程 $pid (占用端口 $port)，请手动处理。"
+            fi
+        done
+    else
+        info "端口 $port 未被占用。"
     fi
 done
 info "Redis 端口 6379 被限制为本地访问，无需外部开放。"
