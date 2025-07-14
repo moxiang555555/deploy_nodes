@@ -254,6 +254,12 @@ install_nexus_cli() {
             sleep 2
         fi
     done
+    # 无论成功与否都加载环境变量
+    if [[ -n "$ZSH_VERSION" ]]; then
+        source ~/.zshrc 2>/dev/null && log "${GREEN}已自动加载 ~/.zshrc 环境变量。${NC}" || log "${YELLOW}未能自动加载 ~/.zshrc，请手动执行 source ~/.zshrc。${NC}"
+    elif [[ -n "$BASH_VERSION" ]]; then
+        source ~/.bashrc 2>/dev/null && log "${GREEN}已自动加载 ~/.bashrc 环境变量。${NC}" || log "${YELLOW}未能自动加载 ~/.bashrc，请手动执行 source ~/.bashrc。${NC}"
+    fi
     if [[ "$success" == false ]]; then
         log "${RED}Nexus CLI 安装/更新失败 $max_attempts 次，将尝试使用当前版本运行节点。${NC}"
     fi
