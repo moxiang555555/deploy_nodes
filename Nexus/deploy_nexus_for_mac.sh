@@ -1,4 +1,4 @@
-#!/bin/bash
+ #!/bin/bash
 
 # 柔和色彩设置
 GREEN='\033[1;32m'      # 柔和绿色
@@ -13,39 +13,39 @@ MAX_LOG_SIZE=10485760 # 10MB，日志大小限制
 # 检测操作系统
 OS=$(uname -s)
 case "$OS" in
-    Darwin) OS_TYPE="macOS" ;;
-    Linux)
-        if [[ -f /etc/os-release ]]; then
-            . /etc/os-release
+  Darwin) OS_TYPE="macOS" ;;
+  Linux)
+    if [[ -f /etc/os-release ]]; then
+      . /etc/os-release
             if [[ "$ID" == "ubuntu" ]]; then
                 OS_TYPE="Ubuntu"
             else
                 OS_TYPE="Linux"
             fi
-        else
-            OS_TYPE="Linux"
-        fi
-        ;;
+    else
+      OS_TYPE="Linux"
+    fi
+    ;;
     *) echo -e "${RED}不支持的操作系统: $OS。本脚本仅支持 macOS、Ubuntu 和其他 Linux 发行版。${NC}" ; exit 1 ;;
 esac
 
 # 检测 shell 并设置配置文件
 if [[ -n "$ZSH_VERSION" ]]; then
-    SHELL_TYPE="zsh"
-    CONFIG_FILE="$HOME/.zshrc"
+  SHELL_TYPE="zsh"
+  CONFIG_FILE="$HOME/.zshrc"
 elif [[ -n "$BASH_VERSION" ]]; then
-    SHELL_TYPE="bash"
-    CONFIG_FILE="$HOME/.bashrc"
+  SHELL_TYPE="bash"
+  CONFIG_FILE="$HOME/.bashrc"
 else
     echo -e "${RED}不支持的 shell。本脚本仅支持 bash 和 zsh。${NC}"
-    exit 1
+  exit 1
 fi
 
 # 打印标题
 print_header() {
-    echo -e "${BLUE}=====================================${NC}"
-    echo -e "${BLUE}$1${NC}"
-    echo -e "${BLUE}=====================================${NC}"
+  echo -e "${BLUE}=====================================${NC}"
+  echo -e "${BLUE}$1${NC}"
+  echo -e "${BLUE}=====================================${NC}"
 }
 
 # 检查命令是否存在
@@ -251,7 +251,7 @@ install_nexus_cli() {
         else
             log "${YELLOW}第 $attempt 次安装/更新 Nexus CLI 失败。${NC}"
             ((attempt++))
-            sleep 2
+  sleep 2
         fi
     done
     # 只加载.zshrc，如果没有就生成并写入PATH变量
@@ -269,8 +269,8 @@ install_nexus_cli() {
         log "${GREEN}nexus-cli 版本：$(nexus-cli --version 2>/dev/null)${NC}"
     else
         log "${RED}未找到 nexus-network 或 nexus-cli，无法运行节点。${NC}"
-        exit 1
-    fi
+    exit 1
+  fi
 }
 
 # 读取或设置 Node ID，添加5秒超时
@@ -315,7 +315,7 @@ get_node_id() {
             log "${RED}无效的 Node ID，请输入只包含字母、数字或连字符的 ID。${NC}"
             exit 1
         fi
-        mkdir -p "$HOME/.nexus"
+    mkdir -p "$HOME/.nexus"
         echo "{\"node_id\": \"${NODE_ID_TO_USE}\"}" > "$CONFIG_PATH"
         log "${GREEN}已写入 Node ID: $NODE_ID_TO_USE 到 $CONFIG_PATH${NC}"
     fi
@@ -338,7 +338,7 @@ start_node() {
         else
             log "${RED}nexus-cli 启动也失败，触发自动重启...${NC}"
             cleanup_restart
-            install_nexus_cli
+      install_nexus_cli
             start_node
             return
         fi
@@ -350,7 +350,7 @@ main() {
     get_node_id
     while true; do
         cleanup_restart
-        install_nexus_cli
+      install_nexus_cli
         start_node
         log "${BLUE}节点将每隔4小时自动重启...${NC}"
         sleep 14400

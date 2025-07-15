@@ -15,44 +15,6 @@ echo "=======================================" | tee -a "$log_file"
 # 配置文件路径，用于存储 RPC_URL 和 PRIVATE_KEY
 config_file="$HOME/.infernet_config"
 
-# ========== 系统检测与依赖安装 ===========
-OS_TYPE="$(uname)"
-if [[ "$OS_TYPE" == "Darwin" ]]; then
-    info "检测到 macOS 系统"
-    if ! command -v brew &> /dev/null; then
-        info "Homebrew 未安装，正在安装..."
-        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-        if [[ $? -ne 0 ]]; then
-            error "Homebrew 安装失败，请手动安装 Homebrew 后重试"
-        fi
-        if [[ "$(uname -m)" == "arm64" ]]; then
-            eval "$(/opt/homebrew/bin/brew shellenv)"
-        else
-            eval "$(/usr/local/bin/brew shellenv)"
-        fi
-    fi
-    brew update
-    brew install curl git nano jq lz4 make coreutils docker docker-compose
-    # Docker Desktop 需手动启动
-elif [[ "$OS_TYPE" == "Linux" ]]; then
-    info "检测到 Linux 系统，假定为 Ubuntu"
-    sudo apt update
-    sudo apt install -y curl git nano jq lz4 make coreutils docker.io docker-compose
-    sudo systemctl enable docker
-    sudo systemctl start docker
-else
-    error "不支持的操作系统: $OS_TYPE"
-fi
-
-# sed -i 兼容函数
-SED_INPLACE() {
-    if [[ "$OS_TYPE" == "Darwin" ]]; then
-        sed -i '' "$@"
-    else
-        sed -i "$@"
-    fi
-}
-
 # 函数：加载或提示输入 RPC_URL 和 PRIVATE_KEY
 load_or_prompt_config() {
     if [ -f "$config_file" ]; then
@@ -415,7 +377,7 @@ if [ "$update_config_and_restart" = "true" ]; then
     # 检查并更新 docker-compose.yml 中的 depends_on 设置
     info "检查并更新 docker-compose.yaml 中的 depends_on 设置..."
     if grep -q 'depends_on: \[ redis, infernet-anvil \]' docker-compose.yaml; then
-        SED_INPLACE 's/depends_on: \[ redis, infernet-anvil \]/depends_on: [ redis ]/' docker-compose.yaml
+        sed -i.bak 's/depends_on: \[ redis, infernet-anvil \]/depends_on: [ redis ]/' docker-compose.yaml
         info "已修改 depends_on 配置。备份文件保存在：docker-compose.yaml.bak"
     else
         info "depends_on 配置已正确，无需修改。"
@@ -552,14 +514,14 @@ contract CallContract is Script {
     }
 }
 EOF
-            if ! SED_INPLACE "s|ADDRESS_TO_GM|$contract_address|" "$call_contract_file"; then
+            if ! sed -i '' "s|ADDRESS_TO_GM|$contract_address|" "$call_contract_file"; then
                 error "更新 CallContract.s.sol 中的合约地址失败，请检查文件内容或权限：$call_contract_file"
             fi
             info "✅ 已成功创建并更新 CallContract.s.sol 中的合约地址为 $contract_address"
         else
-            if ! SED_INPLACE "s|SaysGM(0x[0-9a-fA-F]\{40\})|SaysGM($contract_address)|" "$call_contract_file"; then
+            if ! sed -i '' "s|SaysGM(0x[0-9a-fA-F]\{40\})|SaysGM($contract_address)|" "$call_contract_file"; then
                 warn "正则替换失败，尝试占位符替换..."
-                if ! SED_INPLACE "s|ADDRESS_TO_GM|$contract_address|" "$call_contract_file"; then
+                if ! sed -i '' "s|ADDRESS_TO_GM|$contract_address|" "$call_contract_file"; then
                     error "更新 CallContract.s.sol 中的合约地址失败，请检查文件内容或权限：$call_contract_file"
                 fi
             fi
@@ -890,14 +852,14 @@ contract CallContract is Script {
     }
 }
 EOF
-        if ! SED_INPLACE "s|ADDRESS_TO_GM|$contract_address|" "$call_contract_file"; then
+        if ! sed -i '' "s|ADDRESS_TO_GM|$contract_address|" "$call_contract_file"; then
             error "更新 CallContract.s.sol 中的合约地址失败，请检查文件内容或权限：$call_contract_file"
         fi
         info "✅ 已成功创建并更新 CallContract.s.sol 中的合约地址为 $contract_address"
     else
-        if ! SED_INPLACE "s|SaysGM(0x[0-9a-fA-F]\{40\})|SaysGM($contract_address)|" "$call_contract_file"; then
+        if ! sed -i '' "s|SaysGM(0x[0-9a-fA-F]\{40\})|SaysGM($contract_address)|" "$call_contract_file"; then
             warn "正则替换失败，尝试占位符替换..."
-            if ! SED_INPLACE "s|ADDRESS_TO_GM|$contract_address|" "$call_contract_file"; then
+            if ! sed -i '' "s|ADDRESS_TO_GM|$contract_address|" "$call_contract_file"; then
                 error "更新 CallContract.s.sol 中的合约地址失败，请检查文件内容或权限：$call_contract_file"
             fi
         fi
