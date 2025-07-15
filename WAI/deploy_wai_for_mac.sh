@@ -16,11 +16,31 @@ warn() { echo -e "${YELLOW}[$(date '+%Y-%m-%d %H:%M:%S')] [WARN] $1${NC}"; }
 
 # 检查系统并安装依赖
 log "检查系统..."
-if [[ "$(uname)" != "Linux" ]]; then
-    error "此脚本仅适用于 Ubuntu Linux"
+OS_TYPE="$(uname)"
+if [[ "$OS_TYPE" == "Darwin" ]]; then
+    log "检测到 macOS 系统"
+    # 检查 Homebrew
+    if ! command -v brew >/dev/null 2>&1; then
+        log "Homebrew 未安装，正在安装..."
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        if [[ $? -ne 0 ]]; then
+            error "Homebrew 安装失败，请手动安装 Homebrew 后重试"
+        fi
+        if [[ "$(uname -m)" == "arm64" ]]; then
+            eval "$(/opt/homebrew/bin/brew shellenv)"
+        else
+            eval "$(/usr/local/bin/brew shellenv)"
+        fi
+    fi
+    brew update
+    brew install curl git wget jq python3 node
+elif [[ "$OS_TYPE" == "Linux" ]]; then
+    log "检测到 Linux 系统"
+    sudo apt update
+    sudo apt install -y curl git wget jq python3 python3-pip nodejs npm
+else
+    error "不支持的操作系统: $OS_TYPE"
 fi
-sudo apt update
-sudo apt install -y curl git wget jq python3 python3-pip nodejs npm
 
 # 检查并安装wai cli
 if ! command -v wai >/dev/null 2>&1; then
