@@ -30,6 +30,8 @@ echo "🍺 Checking Homebrew..."
 if ! command -v brew &>/dev/null; then
   echo "📥 Installing Homebrew..."
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+else
+  echo "✅ Homebrew 已安装，跳过安装。"
 fi
 
 # ----------- Configure Brew Environment Variable ----------- 
@@ -40,8 +42,15 @@ fi
 eval "$(/opt/homebrew/bin/brew shellenv)"
 
 # ----------- Install Dependencies ----------- 
-echo "📦 Installing Node.js, Python3.12, curl, screen, git, yarn..."
-brew install node python@3.12 curl screen git yarn
+echo "📦 检查并安装 Node.js, Python3.12, curl, screen, git, yarn..."
+for dep in node python3.12 curl screen git yarn; do
+  if ! command -v $dep &>/dev/null; then
+    echo "📥 安装 $dep..."
+    brew install $dep
+  else
+    echo "✅ $dep 已安装，跳过安装。"
+  fi
+done
 
 # ----------- Set Python 3.12 Alias ----------- 
 PYTHON_ALIAS="# Python3.12 Environment Setup"
