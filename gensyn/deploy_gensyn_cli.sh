@@ -70,19 +70,20 @@ fi
 source ~/.zshrc || true
 
 # ----------- Clone Repo ----------- 
-if [[ -d "rl-swarm" ]]; then
-  echo "⚠️ 'rl-swarm' directory already exists."
+if [[ -d "rl-swarm-0.5.3" ]]; then
+  echo "⚠️ 'rl-swarm-0.5.3' directory already exists."
   read -p "Overwrite the existing directory? (y/n): " confirm
   if [[ "$confirm" =~ ^[Yy]$ ]]; then
-    rm -rf rl-swarm
+    rm -rf rl-swarm-0.5.3
+    echo "📥 Cloning the rl-swarm repository..."
+    git clone https://github.com/readyName/rl-swarm-0.5.3.git
   else
-    echo "❌ Cancelled."
-    exit 1
+    echo "❌ 跳过克隆，继续后续流程。"
   fi
+else
+  echo "📥 Cloning the rl-swarm repository..."
+  git clone https://github.com/readyName/rl-swarm-0.5.3.git
 fi
-
-echo "📥 Cloning the rl-swarm repository..."
-git clone https://github.com/readyName/rl-swarm-0.5.3.git
 
 # ----------- 复制 user 关键文件 -----------
 USER_SRC="$HOME/rl-swarm-0.5/user"
