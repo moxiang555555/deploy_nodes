@@ -32,7 +32,6 @@ if [[ "$OS_TYPE" == "Darwin" ]]; then
             eval "$(/usr/local/bin/brew shellenv)"
         fi
     fi
-    brew update
     brew install curl git wget jq python3 node
 elif [[ "$OS_TYPE" == "Linux" ]]; then
     log "检测到 Linux 系统"
