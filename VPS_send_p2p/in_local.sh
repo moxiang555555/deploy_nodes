@@ -16,7 +16,7 @@ cat << EOF > ~/scripts/proxy_test.sh
 echo "=== RL Swarm代理连接测试 ==="
 
 # 测试代理服务器地址
-TARGETS=("YOUR_CLOUD_SERVER_IP:30011" "YOUR_CLOUD_SERVER_IP:30012" "YOUR_CLOUD_SERVER_IP:30013")
+TARGETS=("5.199.173.55:30011" "5.199.173.55:30012" "5.199.173.55:30013")
 
 for target in "\${TARGETS[@]}"; do
     echo -n "测试连接 \$target ... "
