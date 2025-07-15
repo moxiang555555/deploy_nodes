@@ -71,17 +71,18 @@ source ~/.zshrc || true
 
 # ----------- Clone Repo ----------- 
 if [[ -d "rl-swarm-0.5.3" ]]; then
-  echo "⚠️ 'rl-swarm-0.5.3' directory already exists."
-  read -p "Overwrite the existing directory? (y/n): " confirm
+  echo "⚠️ 检测到已存在目录 'rl-swarm-0.5.3'。"
+  read -p "是否覆盖（删除后重新克隆）该目录？(y/n): " confirm
   if [[ "$confirm" =~ ^[Yy]$ ]]; then
+    echo "🗑️ 正在删除旧目录..."
     rm -rf rl-swarm-0.5.3
-    echo "📥 Cloning the rl-swarm repository..."
+    echo "📥 正在克隆 rl-swarm 仓库..."
     git clone https://github.com/readyName/rl-swarm-0.5.3.git
   else
     echo "❌ 跳过克隆，继续后续流程。"
   fi
 else
-  echo "📥 Cloning the rl-swarm repository..."
+  echo "📥 正在克隆 rl-swarm 仓库..."
   git clone https://github.com/readyName/rl-swarm-0.5.3.git
 fi
 
