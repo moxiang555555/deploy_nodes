@@ -75,34 +75,38 @@ fi
 echo "📥 Cloning the rl-swarm repository..."
 git clone https://github.com/readyName/rl-swarm-0.5.3.git
 
+# ----------- 复制 user 关键文件 -----------
+USER_SRC="$HOME/rl-swarm-0.5/user"
+KEY_SRC="$USER_SRC/keys/swarm.pem"
+KEY_DST="rl-swarm-0.5.3/swarm.pem"
+APIKEY_SRC="$USER_SRC/modal-login/userApiKey.json"
+APIDATA_SRC="$USER_SRC/modal-login/userData.json"
+MODAL_DST="rl-swarm-0.5.3/modal-login/temp-data"
+
+# 复制 keys/swarm.pem
+if [ -f "$KEY_SRC" ]; then
+  cp "$KEY_SRC" "$KEY_DST" && echo "✅ 复制成功：swarm.pem" || echo "⚠️ 复制失败：swarm.pem"
+else
+  echo "⚠️ 缺少文件：$KEY_SRC，请手动补齐。"
+fi
+
+# 复制 modal-login 下两个文件
+mkdir -p "$MODAL_DST"
+for src in "$APIKEY_SRC" "$APIDATA_SRC"; do
+  fname=$(basename "$src")
+  if [ -f "$src" ]; then
+    cp "$src" "$MODAL_DST/$fname" && echo "✅ 复制成功：$fname" || echo "⚠️ 复制失败：$fname"
+  else
+    echo "⚠️ 缺少文件：$src，请手动补齐。"
+  fi
+done
+# 无论文件是否缺失，始终继续执行后续脚本
+
 # ----------- Clean Port 3000 ----------- 
 echo "🧹 Cleaning up port 3000..."
 pid=$(lsof -ti:3000) && [ -n "$pid" ] && kill -9 $pid && echo "✅ Killed: $pid" || echo "✅ Port 3000 is free."
 
-# ----------- Launch screen session and enter it ----------- 
-echo "🖥️ Launching RL-Swarm in screen session..."
-
-screen -S gensyn -d -m bash -c '
-  cd rl-swarm || exit 1
-
-  echo "🐍 Creating virtual environment..."
-  /opt/homebrew/bin/python3.12 -m venv .venv
-
-  source .venv/bin/activate
-
-  echo "🔧 Setting PyTorch MPS env..."
-  export PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0
-  export PYTORCH_ENABLE_MPS_FALLBACK=1
-
-  echo "🚀 Running RL-Swarm..."
-  chmod +x run_rl_swarm.sh
-  echo -e "y\nA\n0.5\nN" | ./run_rl_swarm.sh
-
-  echo "✅ RL-Swarm launched."
-  exec bash
-'
-
-# ----------- Auto-attach to the screen session ----------- 
-sleep 2
-echo "🔗 Attaching to screen session..."
-screen -r gensyn
+# ----------- 进入rl-swarm-0.5.3目录并执行go.sh -----------
+cd rl-swarm-0.5.3 || { echo "❌ 进入 rl-swarm-0.5.3 目录失败"; exit 1; }
+chmod +x go.sh
+./go.sh
