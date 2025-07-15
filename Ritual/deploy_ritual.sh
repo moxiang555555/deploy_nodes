@@ -306,12 +306,11 @@ exit 0
 esac
 done
 
-# 检查端口是否占用
-echo "[7/15] 🔐 检查端口..." | tee -a "$log_file"
-info "检查端口占用..."
+# 检查端口是否占用前先尝试停止并清理 Docker Compose 服务
 for port in 4000 6379 8545 5001; do
-if lsof -i :$port &> /dev/null; then
-        error "端口 $port 已被占用，请释放端口或修改配置后重试。"
+    echo "🧹 停止并清理当前 Docker Compose 服务..."
+    docker compose down || { echo "⚠️ docker compose down 执行失败，继续执行下一步..."; }
+    if lsof -i :$port &> /dev/null; then
         info "端口 $port 被占用，尝试自动kill占用进程..."
         pids=$(lsof -t -i :$port)
         for pid in $pids; do
@@ -323,7 +322,7 @@ if lsof -i :$port &> /dev/null; then
         done
     else
         info "端口 $port 未被占用。"
-fi
+    fi
 done
 info "Redis 端口 6379 被限制为本地访问，无需外部开放。"
 
