@@ -69,6 +69,42 @@ fi
 
 source ~/.zshrc || true
 
+# ----------- 克隆前备份关键文件（优先0.5.3，无则0.5） -----------
+TMP_USER_FILES="/tmp/rl-swarm-user-files"
+mkdir -p "$TMP_USER_FILES"
+
+BACKUP_SRC=""
+if [[ -d "rl-swarm-0.5.3" ]]; then
+  echo "🔍 检测到已存在 rl-swarm-0.5.3，备份关键文件到临时目录..."
+  BACKUP_SRC="rl-swarm-0.5.3"
+elif [[ -d "$HOME/rl-swarm-0.5/user" ]]; then
+  echo "🔍 未检测到 rl-swarm-0.5.3，尝试从 $HOME/rl-swarm-0.5/user 备份关键文件..."
+  BACKUP_SRC="$HOME/rl-swarm-0.5/user"
+fi
+
+if [[ -n "$BACKUP_SRC" ]]; then
+  # swarm.pem
+  if [ -f "$BACKUP_SRC/swarm.pem" ]; then
+    cp "$BACKUP_SRC/swarm.pem" "$TMP_USER_FILES/swarm.pem" && echo "✅ 已备份 swarm.pem"
+  elif [ -f "$BACKUP_SRC/keys/swarm.pem" ]; then
+    cp "$BACKUP_SRC/keys/swarm.pem" "$TMP_USER_FILES/swarm.pem" && echo "✅ 已备份 keys/swarm.pem"
+  fi
+  # userApiKey.json
+  if [ -f "$BACKUP_SRC/modal-login/temp-data/userApiKey.json" ]; then
+    cp "$BACKUP_SRC/modal-login/temp-data/userApiKey.json" "$TMP_USER_FILES/userApiKey.json" && echo "✅ 已备份 userApiKey.json"
+  elif [ -f "$BACKUP_SRC/modal-login/userApiKey.json" ]; then
+    cp "$BACKUP_SRC/modal-login/userApiKey.json" "$TMP_USER_FILES/userApiKey.json" && echo "✅ 已备份 userApiKey.json"
+  fi
+  # userData.json
+  if [ -f "$BACKUP_SRC/modal-login/temp-data/userData.json" ]; then
+    cp "$BACKUP_SRC/modal-login/temp-data/userData.json" "$TMP_USER_FILES/userData.json" && echo "✅ 已备份 userData.json"
+  elif [ -f "$BACKUP_SRC/modal-login/userData.json" ]; then
+    cp "$BACKUP_SRC/modal-login/userData.json" "$TMP_USER_FILES/userData.json" && echo "✅ 已备份 userData.json"
+  fi
+else
+  echo "⚠️ 未检测到 rl-swarm-0.5.3 或 $HOME/rl-swarm-0.5/user，关键文件将缺失，请后续手动补齐。"
+fi
+
 # ----------- Clone Repo ----------- 
 if [[ -d "rl-swarm-0.5.3" ]]; then
   echo "⚠️ 检测到已存在目录 'rl-swarm-0.5.3'。"
@@ -86,32 +122,25 @@ else
   git clone https://github.com/readyName/rl-swarm-0.5.3.git
 fi
 
-# ----------- 复制 user 关键文件 -----------
-USER_SRC="$HOME/rl-swarm-0.5/user"
-KEY_SRC="$USER_SRC/keys/swarm.pem"
+# ----------- 复制临时目录中的 user 关键文件 -----------
 KEY_DST="rl-swarm-0.5.3/swarm.pem"
-APIKEY_SRC="$USER_SRC/modal-login/userApiKey.json"
-APIDATA_SRC="$USER_SRC/modal-login/userData.json"
 MODAL_DST="rl-swarm-0.5.3/modal-login/temp-data"
+mkdir -p "$MODAL_DST"
 
-# 复制 keys/swarm.pem
-if [ -f "$KEY_SRC" ]; then
-  cp "$KEY_SRC" "$KEY_DST" && echo "✅ 复制成功：swarm.pem" || echo "⚠️ 复制失败：swarm.pem"
+if [ -f "$TMP_USER_FILES/swarm.pem" ]; then
+  cp "$TMP_USER_FILES/swarm.pem" "$KEY_DST" && echo "✅ 恢复 swarm.pem 到新目录" || echo "⚠️ 恢复 swarm.pem 失败"
 else
-  echo "⚠️ 缺少文件：$KEY_SRC，请手动补齐。"
+  echo "⚠️ 临时目录缺少 swarm.pem，如有需要请手动补齐。"
 fi
 
-# 复制 modal-login 下两个文件
-mkdir -p "$MODAL_DST"
-for src in "$APIKEY_SRC" "$APIDATA_SRC"; do
-  fname=$(basename "$src")
-  if [ -f "$src" ]; then
-    cp "$src" "$MODAL_DST/$fname" && echo "✅ 复制成功：$fname" || echo "⚠️ 复制失败：$fname"
+for fname in userApiKey.json userData.json; do
+  if [ -f "$TMP_USER_FILES/$fname" ]; then
+    cp "$TMP_USER_FILES/$fname" "$MODAL_DST/$fname" && echo "✅ 恢复 $fname 到新目录" || echo "⚠️ 恢复 $fname 失败"
   else
-    echo "⚠️ 缺少文件：$src，请手动补齐。"
+    echo "⚠️ 临时目录缺少 $fname，如有需要请手动补齐。"
   fi
+  
 done
-# 无论文件是否缺失，始终继续执行后续脚本
 
 # ----------- Clean Port 3000 ----------- 
 echo "🧹 Cleaning up port 3000..."
