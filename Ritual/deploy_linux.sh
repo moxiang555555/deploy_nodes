@@ -155,6 +155,7 @@ if [[ "$(uname)" != "Linux" ]]; then
     error "此脚本仅适用于 Ubuntu Linux"
 fi
 sudo apt update
+# 只安装 docker.io，不安装 containerd.io，避免冲突
 sudo apt install -y curl git nano jq lz4 make coreutils docker.io docker-compose
 sudo systemctl enable docker
 sudo systemctl start docker
