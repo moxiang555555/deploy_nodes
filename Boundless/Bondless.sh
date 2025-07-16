@@ -123,6 +123,16 @@ command_exists() { command -v "$1" &> /dev/null; }
 # 检查包是否已安装
 is_package_installed() { dpkg -s "$1" &> /dev/null 2>&1; }
 
+# 无限重试安装函数
+retry_forever() {
+    local cmd="$1"
+    local desc="$2"
+    while true; do
+        eval "$cmd" && break
+        warning "$desc 安装失败，10 秒后重试..."
+        sleep 10
+    done
+}
 
 # 检查所有依赖并自动安装缺失的依赖
 check_all_deps() {
@@ -621,10 +631,7 @@ install_rust_deps() {
         info "安装 $dep..."
         case $dep in
             rzup)
-                curl -L https://risczero.com/install | bash >> "$LOG_FILE" 2>&1 || {
-                    error "无法安装 rzup"
-                    exit $EXIT_RUST_ERROR
-                }
+                retry_forever "curl -L https://risczero.com/install | bash" "rzup"
                 export PATH="$PATH:/root/.risc0/bin"
                 PS1='' source ~/.bashrc >> "$LOG_FILE" 2>&1 || {
                     error "安装 rzup 后无法加载 ~/.bashrc"
@@ -636,22 +643,13 @@ install_rust_deps() {
                 }
                 ;;
             cargo-risczero)
-                cargo install --locked cargo-risczero >> "$LOG_FILE" 2>&1 && rzup install cargo-risczero >> "$LOG_FILE" 2>&1 || {
-                    error "无法安装 cargo-risczero"
-                    exit $EXIT_RUST_ERROR
-                }
+                retry_forever "cargo install --locked cargo-risczero" "cargo-risczero"
                 ;;
             bento_cli)
-                RUSTUP_TOOLCHAIN=$(rustup toolchain list | grep risc0 | head -1) cargo install --git https://github.com/risc0/risc0 bento-client --branch release-2.1 --bin bento_cli >> "$LOG_FILE" 2>&1 || {
-                    error "无法安装 bento_cli"
-                    exit $EXIT_RUST_ERROR
-                }
+                retry_forever "RUSTUP_TOOLCHAIN=$(rustup toolchain list | grep risc0 | head -1) cargo install --git https://github.com/risc0/risc0 bento-client --branch release-2.1 --bin bento_cli" "bento_cli"
                 ;;
             boundless-cli)
-                cargo install --locked boundless-cli --force >> "$LOG_FILE" 2>&1 || {
-                    error "无法安装 boundless-cli"
-                    exit $EXIT_RUST_ERROR
-                }
+                retry_forever "cargo install --locked boundless-cli --force" "boundless-cli"
                 ;;
         esac
         if command_exists "$dep"; then
