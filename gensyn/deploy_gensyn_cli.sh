@@ -142,6 +142,22 @@ for fname in userApiKey.json userData.json; do
   
 done
 
+# ----------- 生成桌面可双击运行的 .command 文件 -----------
+PROJECT_DIR="$HOME/rl-swarm-0.5.3"
+DESKTOP_DIR="$HOME/Desktop"
+
+for script in gensyn_cli.sh nexus.sh ritual.sh wai.sh startAll.sh; do
+  cmd_name="${script%.sh}.command"
+  cat > "$DESKTOP_DIR/$cmd_name" <<EOF
+#!/bin/bash
+cd "$PROJECT_DIR"
+./$script
+EOF
+  chmod +x "$DESKTOP_DIR/$cmd_name"
+done
+
+echo "✅ 已在桌面生成可双击运行的 .command 文件。"
+
 # ----------- Clean Port 3000 ----------- 
 echo "🧹 Cleaning up port 3000..."
 pid=$(lsof -ti:3000) && [ -n "$pid" ] && kill -9 $pid && echo "✅ Killed: $pid" || echo "✅ Port 3000 is free."
