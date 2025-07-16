@@ -635,15 +635,18 @@ install_rust_deps() {
                     error "安装 rzup 后无法加载 ~/.bashrc"
                     exit $EXIT_RUST_ERROR
                 }
-                rzup install rust >> "$LOG_FILE" 2>&1 || {
-                    error "无法安装 RISC Zero Rust 工具链"
-                    exit $EXIT_RUST_ERROR
-                }
+                retry_forever "rzup install rust" "Risc Zero Rust 工具链"
+                source ~/.bashrc
+                export PATH="$HOME/.cargo/bin:$PATH"
+                export PATH="$HOME/.risc0/bin:$PATH"
                 ;;
             cargo-risczero)
                 retry_forever "cargo install --locked cargo-risczero" "cargo-risczero"
                 ;;
             bento_cli)
+                source ~/.bashrc
+                export PATH="$HOME/.cargo/bin:$PATH"
+                export PATH="$HOME/.risc0/bin:$PATH"
                 retry_forever "RUSTUP_TOOLCHAIN=$(rustup toolchain list | grep risc0 | head -1) cargo install --git https://github.com/risc0/risc0 bento-client --branch release-2.1 --bin bento_cli" "bento_cli"
                 ;;
             boundless-cli)
