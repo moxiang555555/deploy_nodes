@@ -164,5 +164,5 @@ pid=$(lsof -ti:3000) && [ -n "$pid" ] && kill -9 $pid && echo "✅ Killed: $pid"
 
 # ----------- 进入rl-swarm-0.5.3目录并执行go.sh -----------
 cd rl-swarm-0.5.3 || { echo "❌ 进入 rl-swarm-0.5.3 目录失败"; exit 1; }
-chmod +x go.sh
-./go.sh
+chmod +x gensyn_cli.sh
+./gensyn_cli.sh
