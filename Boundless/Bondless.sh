@@ -1,8 +1,6 @@
 #!/bin/bash
 
 
-set -euo pipefail
-
 # 颜色变量
 CYAN='\033[0;36m'
 LIGHTBLUE='\033[1;34m'

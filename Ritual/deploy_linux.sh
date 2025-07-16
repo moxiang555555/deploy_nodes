@@ -182,8 +182,13 @@ if ! command -v docker-compose &>/dev/null; then
     sudo apt-get install -y docker-compose
 fi
 
-sudo systemctl enable docker
-sudo systemctl start docker
+# 仅在 systemd 和 docker.service 存在时启动 docker 服务
+if pidof systemd &>/dev/null && (systemctl list-unit-files | grep -q docker.service); then
+    sudo systemctl enable docker
+    sudo systemctl start docker
+else
+    echo "未检测到 docker.service，跳过 systemctl 启动。"
+fi
 
 # ========== 原有脚本内容继续 ===========
 
