@@ -155,8 +155,33 @@ if [[ "$(uname)" != "Linux" ]]; then
     error "此脚本仅适用于 Ubuntu Linux"
 fi
 sudo apt update
-# 只安装 docker.io，不安装 containerd.io，避免冲突
-sudo apt install -y curl git nano jq lz4 make coreutils docker.io docker-compose
+
+# 先清理 containerd/containerd.io/docker 相关包，避免依赖冲突
+sudo apt-get remove --purge -y containerd containerd.io docker.io docker-compose || true
+sudo apt-get autoremove -y
+sudo apt-get clean
+
+# 安装常规依赖
+sudo apt-get install -y curl git nano jq lz4 make coreutils
+
+# 优先用官方脚本安装 Docker，失败则用 apt 安装 docker.io
+if ! command -v docker &>/dev/null; then
+    echo "尝试用官方脚本安装 Docker..."
+    if curl -fsSL https://get.docker.com | sudo bash; then
+        echo "✅ Docker 官方脚本安装成功"
+    else
+        echo "⚠️ 官方脚本安装失败，尝试用 apt 安装 docker.io"
+        sudo apt-get install -y docker.io
+    fi
+else
+    echo "✅ Docker 已安装，版本：$(docker --version)"
+fi
+
+# 安装 docker-compose
+if ! command -v docker-compose &>/dev/null; then
+    sudo apt-get install -y docker-compose
+fi
+
 sudo systemctl enable docker
 sudo systemctl start docker
 

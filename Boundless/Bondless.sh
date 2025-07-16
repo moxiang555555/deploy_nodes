@@ -1,10 +1,5 @@
 #!/bin/bash
 
-# =============================================================================
-# Boundless 证明者节点设置脚本
-# 描述：自动化安装和配置 Boundless 证明者节点
-# 作者：zakehowell
-# =============================================================================
 
 set -euo pipefail
 
@@ -42,6 +37,10 @@ EXIT_RUST_ERROR=7
 ALLOW_ROOT=false
 FORCE_RECLONE=false
 START_IMMEDIATELY=false
+
+# 兼容所有环境安全获取用户名
+USER_NAME="$(logname 2>/dev/null || whoami)"
+export USER_NAME
 
 # 解析命令行参数
 while [[ $# -gt 0 ]]; do
@@ -210,11 +209,11 @@ check_all_deps() {
     if command_exists docker && docker --version &> /dev/null; then
         local docker_version=$(docker --version | cut -d' ' -f3 | tr -d ',')
         echo -e "   ${GREEN}✓ Docker 已安装 (版本: $docker_version)${RESET}"
-        if ! groups $(logname 2>/dev/null || echo "$USER") | grep -q docker; then
+        if ! groups "$USER_NAME" | grep -q docker; then
             echo -e "   ${YELLOW}⚠ 用户不在 docker 组${RESET}"
-            warning "用户 $(logname 2>/dev/null || echo "$USER") 不在 docker 组"
+            warning "用户 $USER_NAME 不在 docker 组"
             info "自动将用户添加到 docker 组..."
-            usermod -aG docker $(logname 2>/dev/null || echo "$USER") >> "$LOG_FILE" 2>&1 || {
+            usermod -aG docker "$USER_NAME" >> "$LOG_FILE" 2>&1 || {
                 error "无法将用户添加到 docker 组"
                 ((errors++))
             }
@@ -443,9 +442,9 @@ install_gpu_drivers() {
 install_docker() {
     if command_exists docker && docker --version &> /dev/null; then
         info "Docker 已安装 (版本: $(docker --version | cut -d' ' -f3 | tr -d ',')), 跳过"
-        if ! groups $(logname 2>/dev/null || echo "$USER") | grep -q docker; then
+        if ! groups "$USER_NAME" | grep -q docker; then
             info "将用户添加到 docker 组"
-            usermod -aG docker $(logname 2>/dev/null || echo "$USER")
+            usermod -aG docker "$USER_NAME"
         fi
         return
     fi
@@ -463,7 +462,7 @@ install_docker() {
         wait $!
         systemctl enable docker
         systemctl start docker
-        usermod -aG docker $(logname 2>/dev/null || echo "$USER")
+        usermod -aG docker "$USER_NAME"
     } >> "$LOG_FILE" 2>&1 || {
         error "无法安装 Docker"
         exit $EXIT_DPKG_ERROR
