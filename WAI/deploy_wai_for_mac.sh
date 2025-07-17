@@ -42,6 +42,15 @@ else
     error "不支持的操作系统: $OS_TYPE"
 fi
 
+# 检查并删除 ~/.wombo 目录
+if [ -d "$HOME/.wombo" ]; then
+    log "检测到 ~/.wombo 目录，正在删除..."
+    rm -rf "$HOME/.wombo"
+    log "~/.wombo 目录已删除"
+else
+    log "未检测到 ~/.wombo 目录，继续执行"
+fi
+
 # 检查并安装wai cli
 if ! command -v wai >/dev/null 2>&1; then
     log "安装 WAI CLI..."
