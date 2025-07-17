@@ -43,7 +43,7 @@ eval "$(/opt/homebrew/bin/brew shellenv)"
 
 # ----------- Install Dependencies ----------- 
 echo "📦 检查并安装 Node.js, Python@3.12, curl, screen, git, yarn..."
-for dep in node python3.12 curl screen git yarn; do
+for dep in node python@3.12 curl screen git yarn; do
   if ! command -v $dep &>/dev/null; then
     echo "📥 安装 $dep..."
     while true; do
