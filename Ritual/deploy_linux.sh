@@ -52,117 +52,31 @@ EOF
     info "配置已保存至 $config_file"
 }
 
-# 函数：检查并安装部署合约所需的依赖，无限重试
-check_and_install_contract_depspf() {
-    echo "[1/15] 🧹 检查部署合约所需依赖..." | tee -a "$log_file"
-
-    # 检查 Homebrew
-    if ! command -v brew &> /dev/null; then
-        info "Homebrew 未安装，正在安装..."
-        while true; do
-            if /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"; then
-                echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zshrc
-                eval "$(/opt/homebrew/bin/brew shellenv)"
-                info "Homebrew 安装成功，版本：$(brew --version | head -n 1)"
-                break
-            else
-                warn "Homebrew 安装失败，正在重试..."
-                sleep 10
-            fi
-        done
-    else
-        info "Homebrew 已安装，版本：$(brew --version | head -n 1)"
-    fi
-
-    # 检查并安装基本依赖
-    for pkg in curl jq; do
-        if ! command -v $pkg &> /dev/null; then
-            info "安装 $pkg..."
-            while true; do
-                if brew install $pkg; then
-                    info "$pkg 安装成功。"
-                    break
-                else
-                    warn "安装 $pkg 失败，正在重试..."
-                    sleep 10
-                fi
-            done
-        else
-            info "$pkg 已安装。"
-        fi
-    done
-
-    # 检查 Docker
-    if ! command -v docker &> /dev/null; then
-        info "Docker 未安装，正在通过 Homebrew 安装 Docker Desktop..."
-        while true; do
-            if brew install --cask docker; then
-                echo "🚀 Docker 安装成功！请手动打开 Docker Desktop：open -a Docker"
-                info "请等待 Docker Desktop 启动完成后再继续（可能需要几分钟）。"
-                read -p "按 Enter 继续（确保 Docker Desktop 已运行）..."
-                break
-            else
-                warn "Docker Desktop 安装失败，正在重试..."
-                sleep 10
-            fi
-        done
-    else
-        info "Docker 已安装，版本：$(docker --version)"
-    fi
-
-    # 检查 Docker Compose
-    if ! command -v docker-compose &> /dev/null; then
-        info "安装 Docker Compose..."
-        while true; do
-            if brew install docker-compose; then
-                info "Docker Compose 安装成功，版本：$(docker-compose --version)"
-                break
-            else
-                warn "Docker Compose 安装失败，正在重试..."
-                sleep 10
-            fi
-        done
-    else
-        info "Docker Compose 已安装，版本：$(docker-compose --version)"
-    fi
-
-    # 检查 Foundry
-    if ! command -v forge &> /dev/null; then
-        info "Foundry 未安装，正在安装..."
-        while true; do
-            if curl -L https://foundry.paradigm.xyz | bash; then
-                echo 'export PATH="$HOME/.foundry/bin:$PATH"' >> ~/.zshrc
-                source ~/.zshrc
-                if foundryup; then
-                    info "Foundry 安装成功，forge 版本：$(forge --version)"
-                    break
-                else
-                    warn "Foundry 更新失败，正在重试..."
-                    sleep 10
-                fi
-            else
-                warn "Foundry 安装失败，正在重试..."
-                sleep 10
-            fi
-        done
-    else
-        info "Foundry 已安装，forge 版本：$(forge --version)"
-    fi
-}
-
-# ========== 依赖安装（仅适配Ubuntu） ===========
-if [[ "$(uname)" != "Linux" ]]; then
-    error "此脚本仅适用于 Ubuntu Linux"
-fi
-sudo apt update
-
+# 删除brew相关的安装和检测逻辑，仅保留Ubuntu/apt相关的依赖安装
 # 先清理 containerd/containerd.io/docker 相关包，避免依赖冲突
 sudo apt-get remove --purge -y containerd containerd.io docker.io docker-compose || true
 sudo apt-get autoremove -y
 sudo apt-get clean
 
 # 安装常规依赖
-sudo apt-get install -y curl git nano jq lz4 make coreutils
+# 依次检测并安装每个依赖，已安装则跳过，未安装自动重试
+ubuntu_deps=(curl git nano jq lz4 make coreutils)
+for dep in "${ubuntu_deps[@]}"; do
+  if ! command -v $dep &>/dev/null; then
+    echo "📥 安装 $dep..."
+    while true; do
+      if sudo apt-get install -y $dep; then
+        echo "✅ $dep 安装成功。"
+        break
+      else
+        echo "⚠️ $dep 安装失败，3秒后重试..."
+        sleep 3
+      fi
+    done
+  else
+    echo "✅ $dep 已安装，跳过安装。"
+  fi
+done
 
 # 优先用官方脚本安装 Docker，失败则用 apt 安装 docker.io
 if ! command -v docker &>/dev/null; then
@@ -368,35 +282,67 @@ fi
 
 # 直接部署合约模式：检查并安装依赖
 if [ "$skip_to_deploy" = "true" ]; then
-    check_and_install_contract_depspf
-    echo "[9/15] 🚀 开始部署合约..." | tee -a "$log_file"
-    cd "$HOME/infernet-container-starter/projects/hello-world/contracts" || error "无法进入 $HOME/infernet-container-starter/projects/hello-world/contracts 目录"
-
-    # 安装 Forge 库，无限重试
-    if ! rm -rf lib/forge-std lib/infernet-sdk; then
-        warn "清理旧 Forge 库失败，继续安装..."
+    # 删除 check_and_install_contract_depspf 函数中所有brew相关内容
+    # 检查 Docker
+    if ! command -v docker &> /dev/null; then
+        info "Docker 未安装，正在通过 Homebrew 安装 Docker Desktop..."
+        while true; do
+            if brew install --cask docker; then
+                echo "🚀 Docker 安装成功！请手动打开 Docker Desktop：open -a Docker"
+                info "请等待 Docker Desktop 启动完成后再继续（可能需要几分钟）。"
+                read -p "按 Enter 继续（确保 Docker Desktop 已运行）..."
+                break
+            else
+                warn "Docker Desktop 安装失败，正在重试..."
+                sleep 10
+            fi
+        done
+    else
+        info "Docker 已安装，版本：$(docker --version)"
     fi
-    while true; do
-        if forge install foundry-rs/forge-std; then
-            info "forge-std 安装成功。"
-            break
-        else
-            warn "安装 forge-std 失败，正在重试..."
-            sleep 10
-        fi
-    done
-    while true; do
-        if forge install ritual-net/infernet-sdk; then
-            info "infernet-sdk 安装成功。"
-            break
-        else
-            warn "安装 infernet-sdk 失败，正在重试..."
-            sleep 10
-        fi
-    done
 
-    # 写入部署脚本
-    cat <<'EOF' > script/Deploy.s.sol
+    # 检查 Docker Compose
+    if ! command -v docker-compose &> /dev/null; then
+        info "安装 Docker Compose..."
+        while true; do
+            if brew install docker-compose; then
+                info "Docker Compose 安装成功，版本：$(docker-compose --version)"
+                break
+            else
+                warn "Docker Compose 安装失败，正在重试..."
+                sleep 10
+            fi
+        done
+    else
+        info "Docker Compose 已安装，版本：$(docker-compose --version)"
+    fi
+
+    # 检查 Foundry
+    if ! command -v forge &> /dev/null; then
+        info "Foundry 未安装，正在安装..."
+        while true; do
+            if curl -L https://foundry.paradigm.xyz | bash; then
+                echo 'export PATH="$HOME/.foundry/bin:$PATH"' >> ~/.zshrc
+                source ~/.zshrc
+                if foundryup; then
+                    info "Foundry 安装成功，forge 版本：$(forge --version)"
+                    break
+                else
+                    warn "Foundry 更新失败，正在重试..."
+                    sleep 10
+                fi
+            else
+                warn "Foundry 安装失败，正在重试..."
+                sleep 10
+            fi
+        done
+    else
+        info "Foundry 已安装，forge 版本：$(forge --version)"
+    fi
+fi
+
+# 写入部署脚本
+cat <<'EOF' > script/Deploy.s.sol
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 pragma solidity ^0.8.13;
 import {Script, console2} from "forge-std/Script.sol";
@@ -416,8 +362,8 @@ contract Deploy is Script {
 }
 EOF
 
-    # 写入 Makefile
-    cat <<'EOF' > "$HOME/infernet-container-starter/projects/hello-world/contracts/Makefile"
+# 写入 Makefile
+cat <<'EOF' > "$HOME/infernet-container-starter/projects/hello-world/contracts/Makefile"
 .PHONY: deploy
 sender := $PRIVATE_KEY
 RPC_URL := $RPC_URL
@@ -425,30 +371,30 @@ deploy:
     @PRIVATE_KEY=$(sender) forge script script/Deploy.s.sol:Deploy --broadcast --rpc-url $(RPC_URL)
 EOF
 
-    # 执行合约部署，无限重试
-    warn "请确保私钥有足够余额以支付 gas 费用。"
-    deploy_log=$(mktemp)
-    attempt=1
-    while true; do
-        info "尝试部署合约 （第 $attempt 次）..."
-        if PRIVATE_KEY="$PRIVATE_KEY" forge script script/Deploy.s.sol:Deploy --broadcast --rpc-url "$RPC_URL" > "$deploy_log" 2>&1; then
-            info "🔺 合约部署成功！✅ 输出如下："
-            cat "$deploy_log"
-            break
-        else
-            warn "合约部署失败，详细信息如下：\n$(cat "$deploy_log")\n正在重试..."
-            sleep 10
-        fi
-        ((attempt++))
-    done
-    contract_address=$(grep -i "Deployed SaysGM" "$deploy_log" | awk '{print $NF}' | head -n 1)
-    if [ -n "$contract_address" ] && [[ "$contract_address" =~ ^0x[0-9a-fA-F]{40}$ ]]; then
-        info "部署的 SaysGM 合约地址：$contract_address"
-        info "请保存此合约地址，用于后续调用！"
-        call_contract_file="$HOME/infernet-container-starter/projects/hello-world/contracts/script/CallContract.s.sol"
-        if [ ! -f "$call_contract_file" ]; then
-            warn "未找到 CallContract.s.sol，创建默认文件..."
-            cat <<'EOF' > "$call_contract_file"
+# 执行合约部署，无限重试
+warn "请确保私钥有足够余额以支付 gas 费用。"
+deploy_log=$(mktemp)
+attempt=1
+while true; do
+    info "尝试部署合约 （第 $attempt 次）..."
+    if PRIVATE_KEY="$PRIVATE_KEY" forge script script/Deploy.s.sol:Deploy --broadcast --rpc-url "$RPC_URL" > "$deploy_log" 2>&1; then
+        info "🔺 合约部署成功！✅ 输出如下："
+        cat "$deploy_log"
+        break
+    else
+        warn "合约部署失败，详细信息如下：\n$(cat "$deploy_log")\n正在重试..."
+        sleep 10
+    fi
+    ((attempt++))
+done
+contract_address=$(grep -i "Deployed SaysGM" "$deploy_log" | awk '{print $NF}' | head -n 1)
+if [ -n "$contract_address" ] && [[ "$contract_address" =~ ^0x[0-9a-fA-F]{40}$ ]]; then
+    info "部署的 SaysGM 合约地址：$contract_address"
+    info "请保存此合约地址，用于后续调用！"
+    call_contract_file="$HOME/infernet-container-starter/projects/hello-world/contracts/script/CallContract.s.sol"
+    if [ ! -f "$call_contract_file" ]; then
+        warn "未找到 CallContract.s.sol，创建默认文件..."
+        cat <<'EOF' > "$call_contract_file"
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 pragma solidity ^0.8.13;
 import {Script, console2} from "forge-std/Script.sol";
@@ -465,49 +411,47 @@ contract CallContract is Script {
     }
 }
 EOF
+        if ! sed -i '' "s|ADDRESS_TO_GM|$contract_address|" "$call_contract_file"; then
+            error "更新 CallContract.s.sol 中的合约地址失败，请检查文件内容或权限：$call_contract_file"
+        fi
+        info "✅ 已成功创建并更新 CallContract.s.sol 中的合约地址为 $contract_address"
+    else
+        if ! sed -i '' "s|SaysGM(0x[0-9a-fA-F]\{40\})|SaysGM($contract_address)|" "$call_contract_file"; then
+            warn "正则替换失败，尝试占位符替换..."
             if ! sed -i '' "s|ADDRESS_TO_GM|$contract_address|" "$call_contract_file"; then
                 error "更新 CallContract.s.sol 中的合约地址失败，请检查文件内容或权限：$call_contract_file"
             fi
-            info "✅ 已成功创建并更新 CallContract.s.sol 中的合约地址为 $contract_address"
-        else
-            # 替换合约地址，适配不同系统
-            if [[ "$OSTYPE" == "darwin"* ]]; then
-                sed -i '' "s|SaysGM(0x[0-9a-fA-F]\{40\})|SaysGM($contract_address)|" "$call_contract_file"
-                sed -i '' "s|ADDRESS_TO_GM|$contract_address|" "$call_contract_file"
-            else
-                sed -i "s|SaysGM(0x[0-9a-fA-F]\{40\})|SaysGM($contract_address)|" "$call_contract_file"
-                sed -i "s|ADDRESS_TO_GM|$contract_address|" "$call_contract_file"
-            fi
-            info "✅ 已成功更新 CallContract.s.sol 中的合约地址为 $contract_address"
         fi
-        if ! grep -q "SaysGM($contract_address)" "$call_contract_file"; then
-            error "CallContract.s.sol 未正确更新合约地址，请检查文件：$call_contract_file"
-        fi
-        info "正在调用合约..."
-        call_log=$(mktemp)
-        attempt=1
-        while true; do
-            info "尝试调用合约 （第 $attempt 次）..."
-            if PRIVATE_KEY="$PRIVATE_KEY" forge script "$call_contract_file" --broadcast --rpc-url "$RPC_URL" > "$call_log" 2>&1; then
-                info "✅ 合约调用成功！输出如下："
-                cat "$call_log"
-                break
-            else
-                warn "合约调用失败，详细信息如下：\n$(cat "$call_log")\n正在重试..."
-                sleep 10
-            fi
-            ((attempt++))
-        done
-        rm -f "$call_log"
-    else
-        warn "未找到有效合约地址，请检查部署日志或手动验证。"
+        info "✅ 已成功更新 CallContract.s.sol 中的合约地址为 $contract_address"
     fi
-    rm -f "$deploy_log"
+    if ! grep -q "SaysGM($contract_address)" "$call_contract_file"; then
+        error "CallContract.s.sol 未正确更新合约地址，请检查文件：$call_contract_file"
+    fi
+    info "正在调用合约..."
+    call_log=$(mktemp)
+    attempt=1
+    while true; do
+        info "尝试调用合约 （第 $attempt 次）..."
+        if PRIVATE_KEY="$PRIVATE_KEY" forge script "$call_contract_file" --broadcast --rpc-url "$RPC_URL" > "$call_log" 2>&1; then
+            info "✅ 合约调用成功！输出如下："
+            cat "$call_log"
+            break
+        else
+            warn "合约调用失败，详细信息如下：\n$(cat "$call_log")\n正在重试..."
+            sleep 10
+        fi
+        ((attempt++))
+    done
+    rm -f "$call_log"
+else
+    warn "未找到有效合约地址，请检查部署日志或手动验证。"
+fi
+rm -f "$deploy_log"
 
-    echo "[10/15] ✅ 部署完成！使用 \`docker ps\` 查看节点状态。" | tee -a "$log_file"
-    info "请检查日志：docker logs infernet-node"
-    info "下一步：可运行 'forge script script/CallContract.s.sol --rpc-url $RPC_URL --private-key $PRIVATE_KEY' 来再次调用合约。"
-    exit 0
+echo "[10/15] ✅ 部署完成！使用 \`docker ps\` 查看节点状态。" | tee -a "$log_file"
+info "请检查日志：docker logs infernet-node"
+info "下一步：可运行 'forge script script/CallContract.s.sol --rpc-url $RPC_URL --private-key $PRIVATE_KEY' 来再次调用合约。"
+exit 0
 fi
 
 echo "[9/15] 🧠 开始部署..." | tee -a "$log_file"
