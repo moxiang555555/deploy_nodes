@@ -470,11 +470,13 @@ EOF
             fi
             info "✅ 已成功创建并更新 CallContract.s.sol 中的合约地址为 $contract_address"
         else
-            if ! sed -i '' "s|SaysGM(0x[0-9a-fA-F]\{40\})|SaysGM($contract_address)|" "$call_contract_file"; then
-                warn "正则替换失败，尝试占位符替换..."
-                if ! sed -i '' "s|ADDRESS_TO_GM|$contract_address|" "$call_contract_file"; then
-                    error "更新 CallContract.s.sol 中的合约地址失败，请检查文件内容或权限：$call_contract_file"
-                fi
+            # 替换合约地址，适配不同系统
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                sed -i '' "s|SaysGM(0x[0-9a-fA-F]\{40\})|SaysGM($contract_address)|" "$call_contract_file"
+                sed -i '' "s|ADDRESS_TO_GM|$contract_address|" "$call_contract_file"
+            else
+                sed -i "s|SaysGM(0x[0-9a-fA-F]\{40\})|SaysGM($contract_address)|" "$call_contract_file"
+                sed -i "s|ADDRESS_TO_GM|$contract_address|" "$call_contract_file"
             fi
             info "✅ 已成功更新 CallContract.s.sol 中的合约地址为 $contract_address"
         fi
