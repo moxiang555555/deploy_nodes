@@ -31,9 +31,10 @@ if [[ "$OS_TYPE" == "Darwin" ]]; then
         else
             eval "$(/usr/local/bin/brew shellenv)"
         fi
+        brew install curl git wget jq python3 node
+    else
+        log "Homebrew 已安装，跳过 Homebrew 相关操作"
     fi
-    # 已安装brew时不做brew update，直接安装依赖
-    brew install curl git wget jq python3 node
 elif [[ "$OS_TYPE" == "Linux" ]]; then
     log "检测到 Linux 系统"
     sudo apt update
