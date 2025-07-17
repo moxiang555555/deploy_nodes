@@ -33,12 +33,35 @@ if [[ "$OS_TYPE" == "Darwin" ]]; then
         fi
         brew install curl git wget jq python3 node
     else
-        log "Homebrew 已安装，跳过 Homebrew 相关操作"
+        log "Homebrew 已安装，跳过 Homebrew 安装与更新"
+        for dep in curl git wget jq python3 node; do
+            if ! command -v $dep >/dev/null 2>&1; then
+                log "$dep 未安装，正在用brew安装..."
+                brew install $dep
+            else
+                log "$dep 已安装，跳过"
+            fi
+        done
     fi
 elif [[ "$OS_TYPE" == "Linux" ]]; then
     log "检测到 Linux 系统"
-    sudo apt update
-    sudo apt install -y curl git wget jq python3 python3-pip nodejs npm
+    # 检查是否为 Ubuntu
+    if grep -qi ubuntu /etc/os-release; then
+        log "检测到 Ubuntu 系统"
+        sudo apt update
+        for dep in curl git wget jq python3 python3-pip nodejs npm; do
+            if ! command -v $dep >/dev/null 2>&1; then
+                log "$dep 未安装，正在用apt安装..."
+                sudo apt install -y $dep
+            else
+                log "$dep 已安装，跳过"
+            fi
+        done
+    else
+        log "非 Ubuntu Linux，尝试直接安装依赖"
+        sudo apt update
+        sudo apt install -y curl git wget jq python3 python3-pip nodejs npm
+    fi
 else
     error "不支持的操作系统: $OS_TYPE"
 fi
