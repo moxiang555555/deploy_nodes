@@ -43,22 +43,27 @@ eval "$(/opt/homebrew/bin/brew shellenv)"
 
 # ----------- Install Dependencies ----------- 
 echo "📦 检查并安装 Node.js, Python@3.12, curl, screen, git, yarn..."
-for dep in node python@3.12 curl screen git yarn; do
+deps=(node python3.12 curl screen git yarn)
+brew_names=(node python@3.12 curl screen git yarn)
+
+for i in "${!deps[@]}"; do
+  dep="${deps[$i]}"
+  brew_name="${brew_names[$i]}"
   if ! command -v $dep &>/dev/null; then
-    echo "📥 安装 $dep..."
+    echo "📥 安装 $brew_name..."
     while true; do
-      if brew install $dep; then
-        echo "✅ $dep 安装成功。"
+      if brew install $brew_name; then
+        echo "✅ $brew_name 安装成功。"
         break
       else
-        echo "⚠️ $dep 安装失败，3秒后重试..."
+        echo "⚠️ $brew_name 安装失败，3秒后重试..."
         sleep 3
       fi
     done
   else
     echo "✅ $dep 已安装，跳过安装。"
   fi
- done
+done
 
 # ----------- Set Python 3.12 Alias ----------- 
 PYTHON_ALIAS="# Python3.12 Environment Setup"
