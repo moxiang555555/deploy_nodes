@@ -74,11 +74,17 @@ TMP_USER_FILES="/tmp/rl-swarm-user-files"
 mkdir -p "$TMP_USER_FILES"
 
 BACKUP_SRC=""
-if [[ -d "rl-swarm-0.5.3" ]]; then
-  echo "🔍 检测到已存在 rl-swarm-0.5.3，备份关键文件到临时目录..."
+if [[ -d "rl-swarm-0.5.3" \
+  && ( -f "rl-swarm-0.5.3/swarm.pem" ) \
+  && ( -f "rl-swarm-0.5.3/modal-login/temp-data/userApiKey.json" ) \
+  && ( -f "rl-swarm-0.5.3/modal-login/temp-data/userData.json" ) ]]; then
+  echo "🔍 检测到已存在 rl-swarm-0.5.3 且关键文件齐全，备份关键文件到临时目录..."
   BACKUP_SRC="rl-swarm-0.5.3"
-elif [[ -d "$HOME/rl-swarm-0.5/user" ]]; then
-  echo "🔍 未检测到 rl-swarm-0.5.3，尝试从 $HOME/rl-swarm-0.5/user 备份关键文件..."
+elif [[ -d "$HOME/rl-swarm-0.5/user" \
+  && ( -f "$HOME/rl-swarm-0.5/user/keys/swarm.pem" ) \
+  && ( -f "$HOME/rl-swarm-0.5/user/modal-login/userApiKey.json" ) \
+  && ( -f "$HOME/rl-swarm-0.5/user/modal-login/userData.json" ) ]]; then
+  echo "🔍 未检测到 rl-swarm-0.5.3 或关键文件缺失，尝试从 $HOME/rl-swarm-0.5/user 备份关键文件..."
   BACKUP_SRC="$HOME/rl-swarm-0.5/user"
 fi
 
