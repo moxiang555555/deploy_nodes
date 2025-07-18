@@ -122,7 +122,7 @@ while true; do
     fi
     log "✅ 启动 Worker..."
     # 10分钟超时强制重启
-    POSTHOG_DISABLED=true timeout 600 "$WAI_CMD" run &
+    POSTHOG_DISABLED=true timeout 300 "$WAI_CMD" run &
     WAI_PID=$!
     wait $WAI_PID
     EXIT_CODE=$?
