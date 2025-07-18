@@ -18,6 +18,7 @@ warn() { echo -e "${YELLOW}[$(date '+%Y-%m-%d %H:%M:%S')] [WARN] $1${NC}"; }
 log "检查系统..."
 OS_TYPE="$(uname)"
 if [[ "$OS_TYPE" == "Darwin" ]]; then
+    TIMEOUT_CMD="gtimeout"
     log "检测到 macOS 系统"
     # 检查 Homebrew
     if ! command -v brew >/dev/null 2>&1; then
@@ -44,6 +45,7 @@ if [[ "$OS_TYPE" == "Darwin" ]]; then
         done
     fi
 elif [[ "$OS_TYPE" == "Linux" ]]; then
+    TIMEOUT_CMD="timeout"
     log "检测到 Linux 系统"
     # 检查是否为 Ubuntu
     if grep -qi ubuntu /etc/os-release; then
@@ -122,7 +124,7 @@ while true; do
     fi
     log "✅ 启动 Worker..."
     # 5分钟超时强制重启
-    timeout 300 env POSTHOG_DISABLED=true "$WAI_CMD" run
+    $TIMEOUT_CMD 300 env POSTHOG_DISABLED=true "$WAI_CMD" run
     WAI_PID=$!
     wait $WAI_PID
     EXIT_CODE=$?
