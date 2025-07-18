@@ -384,30 +384,19 @@ else
 info "depends_on 配置已正确，无需修改。"
 fi
 
-# 停止容器
-info "正在停止现有容器..."
-if docker-compose down; then
-info "容器已停止"
-else
-warn "停止容器时出现警告，继续执行..."
+echo "🧹 停止并清理当前 Docker Compose 服务..."
+docker compose down || { echo "⚠️ docker compose down 执行失败，继续执行下一步..."; }
+
+# 清理旧的 infernet-node 日志后台进程
+if pgrep -f "docker logs -f infernet-node" > /dev/null; then
+  pkill -f "docker logs -f infernet-node"
+  info "已清理旧的 infernet-node 日志后台进程"
 fi
 
-# 启动指定服务：node、redis、fluentbit
-info "正在启动指定服务：node、redis、fluentbit..."
-attempt=1
-while true; do
-info "尝试启动容器 （第 $attempt 次）..."
-if docker-compose up node redis fluentbit; then
-info "容器启动成功"
+echo "⚙️ 启动指定服务：node、redis、fluentbit"
+docker compose up node redis fluentbit &
 # 启动日志后台保存
 (docker logs -f infernet-node > "$HOME/infernet-deployment.log" 2>&1 &)
-break
-else
-warn "启动容器失败，正在重试..."
-sleep 10
-fi
-((attempt++))
-done
 
 # 容器将在前台运行，脚本到此结束
 echo "[8/8] ✅ 配置更新完成！容器已在前台启动。" | tee -a "$log_file"
