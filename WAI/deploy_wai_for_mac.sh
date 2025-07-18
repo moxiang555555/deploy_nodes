@@ -14,6 +14,20 @@ log() { echo -e "${GREEN}[$(date '+%Y-%m-%d %H:%M:%S')] [INFO] $1${NC}"; }
 error() { echo -e "${RED}[$(date '+%Y-%m-%d %H:%M:%S')] [ERROR] $1${NC}"; exit 1; }
 warn() { echo -e "${YELLOW}[$(date '+%Y-%m-%d %H:%M:%S')] [WARN] $1${NC}"; }
 
+# 通用超时函数（替代timeout/gtimeout）
+run_with_timeout() {
+  local duration=$1
+  shift
+  "$@" &
+  cmd_pid=$!
+  ( sleep "$duration" && kill -9 $cmd_pid 2>/dev/null ) &
+  watcher_pid=$!
+  wait $cmd_pid 2>/dev/null
+  status=$?
+  kill -9 $watcher_pid 2>/dev/null
+  return $status
+}
+
 # 检查系统并安装依赖
 log "检查系统..."
 OS_TYPE="$(uname)"
@@ -122,14 +136,13 @@ while true; do
     else
         log "✅ 无旧进程需要清理"
     fi
-    log "✅ 启动 Worker..."
-    # 5分钟超时强制重启
-    $TIMEOUT_CMD 300 env POSTHOG_DISABLED=true "$WAI_CMD" run
+    log "✅ 启动 Worker（限时5分钟）..."
+    run_with_timeout 300 env POSTHOG_DISABLED=true "$WAI_CMD" run
     WAI_PID=$!
     wait $WAI_PID
     EXIT_CODE=$?
     if [ $EXIT_CODE -eq 124 ]; then
-        warn "⏰ Worker 已运行10分钟，强制重启..."
+        warn "⏰ Worker 已运行5分钟，强制重启..."
         RETRY=1
         sleep 2
     elif [ $EXIT_CODE -ne 0 ]; then
