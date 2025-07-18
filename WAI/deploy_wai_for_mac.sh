@@ -121,8 +121,8 @@ while true; do
         log "✅ 无旧进程需要清理"
     fi
     log "✅ 启动 Worker..."
-    # 10分钟超时强制重启
-    POSTHOG_DISABLED=true timeout 300 "$WAI_CMD" run &
+    # 5分钟超时强制重启
+    timeout 300 env POSTHOG_DISABLED=true "$WAI_CMD" run
     WAI_PID=$!
     wait $WAI_PID
     EXIT_CODE=$?
