@@ -90,6 +90,10 @@ while [ $ATTEMPT -le $MAX_RETRIES ]; do
         kill -9 "$PORT_PID" || true
     fi
 
+    # 新增：先 down 一下
+    info "停止并清理所有旧的 Docker Compose 服务..."
+    docker-compose down || info "docker-compose down 执行失败，继续..."
+
     # 清理旧容器和服务
     info "清理旧的 swarm-cpu 容器和服务..."
     docker-compose rm -f swarm-cpu || true
