@@ -165,7 +165,7 @@ done
 PROJECT_DIR="$HOME/rl-swarm-0.5.3"
 DESKTOP_DIR="$HOME/Desktop"
 
-for script in gensyn_cli.sh nexus.sh ritual.sh wai.sh startAll.sh; do
+for script in gensyn.sh nexus.sh ritual.sh wai.sh startAll.sh; do
   cmd_name="${script%.sh}.command"
   cat > "$DESKTOP_DIR/$cmd_name" <<EOF
 #!/bin/bash
