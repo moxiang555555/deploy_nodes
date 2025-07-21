@@ -214,6 +214,11 @@ cleanup_exit() {
 
 # 重启时的清理函数
 cleanup_restart() {
+    # 重启前清理日志
+    if [[ -f "$LOG_FILE" ]]; then
+        rm -f "$LOG_FILE"
+        echo -e "${YELLOW}已清理旧日志文件 $LOG_FILE${NC}"
+    fi
     log "${YELLOW}准备重启节点，先进行清理...${NC}"
     if screen -list | grep -q "nexus_node"; then
         log "${BLUE}正在终止 nexus_node screen 会话...${NC}"
