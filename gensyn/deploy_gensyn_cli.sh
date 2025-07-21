@@ -89,8 +89,6 @@ mkdir -p "$TMP_USER_FILES"
 # swarm.pem
 if [ -f "$HOME/rl-swarm-0.5.3/swarm.pem" ]; then
   cp "$HOME/rl-swarm-0.5.3/swarm.pem" "$TMP_USER_FILES/swarm.pem" && echo "✅ 已备份 rl-swarm-0.5.3/swarm.pem"
-elif [ -f "$HOME/rl-swarm-0.5.3/user/swarm.pem" ]; then
-  cp "$HOME/rl-swarm-0.5.3/user/swarm.pem" "$TMP_USER_FILES/swarm.pem" && echo "✅ 已备份 rl-swarm-0.5.3/user/swarm.pem"
 elif [ -f "$HOME/rl-swarm-0.5.3/user/keys/swarm.pem" ]; then
   cp "$HOME/rl-swarm-0.5.3/user/keys/swarm.pem" "$TMP_USER_FILES/swarm.pem" && echo "✅ 已备份 rl-swarm-0.5.3/user/keys/swarm.pem"
 elif [ -f "$HOME/rl-swarm-0.5/user/keys/swarm.pem" ]; then
