@@ -82,46 +82,43 @@ fi
 
 source ~/.zshrc || true
 
-# ----------- 克隆前备份关键文件（优先0.5.3，无则0.5） -----------
+# ----------- 克隆前备份关键文件（优先$HOME/rl-swarm-0.5.3及其user子目录，无则$HOME/rl-swarm-0.5/user） -----------
 TMP_USER_FILES="/tmp/rl-swarm-user-files"
 mkdir -p "$TMP_USER_FILES"
 
-BACKUP_SRC=""
-if [[ -d "rl-swarm-0.5.3" \
-  && ( -f "rl-swarm-0.5.3/swarm.pem" ) \
-  && ( -f "rl-swarm-0.5.3/modal-login/temp-data/userApiKey.json" ) \
-  && ( -f "rl-swarm-0.5.3/modal-login/temp-data/userData.json" ) ]]; then
-  echo "🔍 检测到已存在 rl-swarm-0.5.3 且关键文件齐全，备份关键文件到临时目录..."
-  BACKUP_SRC="rl-swarm-0.5.3"
-elif [[ -d "$HOME/rl-swarm-0.5/user" \
-  && ( -f "$HOME/rl-swarm-0.5/user/keys/swarm.pem" ) \
-  && ( -f "$HOME/rl-swarm-0.5/user/modal-login/userApiKey.json" ) \
-  && ( -f "$HOME/rl-swarm-0.5/user/modal-login/userData.json" ) ]]; then
-  echo "🔍 未检测到 rl-swarm-0.5.3 或关键文件缺失，尝试从 $HOME/rl-swarm-0.5/user 备份关键文件..."
-  BACKUP_SRC="$HOME/rl-swarm-0.5/user"
+# swarm.pem
+if [ -f "$HOME/rl-swarm-0.5.3/swarm.pem" ]; then
+  cp "$HOME/rl-swarm-0.5.3/swarm.pem" "$TMP_USER_FILES/swarm.pem" && echo "✅ 已备份 rl-swarm-0.5.3/swarm.pem"
+elif [ -f "$HOME/rl-swarm-0.5.3/user/swarm.pem" ]; then
+  cp "$HOME/rl-swarm-0.5.3/user/swarm.pem" "$TMP_USER_FILES/swarm.pem" && echo "✅ 已备份 rl-swarm-0.5.3/user/swarm.pem"
+elif [ -f "$HOME/rl-swarm-0.5.3/user/keys/swarm.pem" ]; then
+  cp "$HOME/rl-swarm-0.5.3/user/keys/swarm.pem" "$TMP_USER_FILES/swarm.pem" && echo "✅ 已备份 rl-swarm-0.5.3/user/keys/swarm.pem"
+elif [ -f "$HOME/rl-swarm-0.5/user/keys/swarm.pem" ]; then
+  cp "$HOME/rl-swarm-0.5/user/keys/swarm.pem" "$TMP_USER_FILES/swarm.pem" && echo "✅ 已备份 0.5/user/keys/swarm.pem"
+else
+  echo "⚠️ 未检测到 swarm.pem，如有需要请手动补齐。"
 fi
 
-if [[ -n "$BACKUP_SRC" ]]; then
-  # swarm.pem
-  if [ -f "$BACKUP_SRC/swarm.pem" ]; then
-    cp "$BACKUP_SRC/swarm.pem" "$TMP_USER_FILES/swarm.pem" && echo "✅ 已备份 swarm.pem"
-  elif [ -f "$BACKUP_SRC/keys/swarm.pem" ]; then
-    cp "$BACKUP_SRC/keys/swarm.pem" "$TMP_USER_FILES/swarm.pem" && echo "✅ 已备份 keys/swarm.pem"
-  fi
-  # userApiKey.json
-  if [ -f "$BACKUP_SRC/modal-login/temp-data/userApiKey.json" ]; then
-    cp "$BACKUP_SRC/modal-login/temp-data/userApiKey.json" "$TMP_USER_FILES/userApiKey.json" && echo "✅ 已备份 userApiKey.json"
-  elif [ -f "$BACKUP_SRC/modal-login/userApiKey.json" ]; then
-    cp "$BACKUP_SRC/modal-login/userApiKey.json" "$TMP_USER_FILES/userApiKey.json" && echo "✅ 已备份 userApiKey.json"
-  fi
-  # userData.json
-  if [ -f "$BACKUP_SRC/modal-login/temp-data/userData.json" ]; then
-    cp "$BACKUP_SRC/modal-login/temp-data/userData.json" "$TMP_USER_FILES/userData.json" && echo "✅ 已备份 userData.json"
-  elif [ -f "$BACKUP_SRC/modal-login/userData.json" ]; then
-    cp "$BACKUP_SRC/modal-login/userData.json" "$TMP_USER_FILES/userData.json" && echo "✅ 已备份 userData.json"
-  fi
+# userApiKey.json
+if [ -f "$HOME/rl-swarm-0.5.3/modal-login/temp-data/userApiKey.json" ]; then
+  cp "$HOME/rl-swarm-0.5.3/modal-login/temp-data/userApiKey.json" "$TMP_USER_FILES/userApiKey.json" && echo "✅ 已备份 rl-swarm-0.5.3/modal-login/temp-data/userApiKey.json"
+elif [ -f "$HOME/rl-swarm-0.5.3/user/modal-login/userApiKey.json" ]; then
+  cp "$HOME/rl-swarm-0.5.3/user/modal-login/userApiKey.json" "$TMP_USER_FILES/userApiKey.json" && echo "✅ 已备份 rl-swarm-0.5.3/user/modal-login/userApiKey.json"
+elif [ -f "$HOME/rl-swarm-0.5/user/modal-login/userApiKey.json" ]; then
+  cp "$HOME/rl-swarm-0.5/user/modal-login/userApiKey.json" "$TMP_USER_FILES/userApiKey.json" && echo "✅ 已备份 0.5/user/modal-login/userApiKey.json"
 else
-  echo "⚠️ 未检测到 rl-swarm-0.5.3 或 $HOME/rl-swarm-0.5/user，关键文件将缺失，请后续手动补齐。"
+  echo "⚠️ 未检测到 userApiKey.json，如有需要请手动补齐。"
+fi
+
+# userData.json
+if [ -f "$HOME/rl-swarm-0.5.3/modal-login/temp-data/userData.json" ]; then
+  cp "$HOME/rl-swarm-0.5.3/modal-login/temp-data/userData.json" "$TMP_USER_FILES/userData.json" && echo "✅ 已备份 rl-swarm-0.5.3/modal-login/temp-data/userData.json"
+elif [ -f "$HOME/rl-swarm-0.5.3/user/modal-login/userData.json" ]; then
+  cp "$HOME/rl-swarm-0.5.3/user/modal-login/userData.json" "$TMP_USER_FILES/userData.json" && echo "✅ 已备份 rl-swarm-0.5.3/user/modal-login/userData.json"
+elif [ -f "$HOME/rl-swarm-0.5/user/modal-login/userData.json" ]; then
+  cp "$HOME/rl-swarm-0.5/user/modal-login/userData.json" "$TMP_USER_FILES/userData.json" && echo "✅ 已备份 0.5/user/modal-login/userData.json"
+else
+  echo "⚠️ 未检测到 userData.json，如有需要请手动补齐。"
 fi
 
 # ----------- Clone Repo ----------- 
@@ -181,7 +178,7 @@ echo "✅ 已在桌面生成可双击运行的 .command 文件。"
 echo "🧹 Cleaning up port 3000..."
 pid=$(lsof -ti:3000) && [ -n "$pid" ] && kill -9 $pid && echo "✅ Killed: $pid" || echo "✅ Port 3000 is free."
 
-# ----------- 进入rl-swarm-0.5.3目录并执行go.sh -----------
+# ----------- 进入rl-swarm-0.5.3目录并执行-----------
 cd rl-swarm-0.5.3 || { echo "❌ 进入 rl-swarm-0.5.3 目录失败"; exit 1; }
 chmod +x gensyn.sh
 ./gensyn.sh
