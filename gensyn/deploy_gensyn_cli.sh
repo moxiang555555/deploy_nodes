@@ -89,9 +89,12 @@ EOF
   source ~/.zshrc || true
 else
   # Ubuntu
-  echo "📦 检查并安装 Node.js, Python3.12, curl, screen, git, yarn..."
+  echo "📦 检查并安装 Node.js, Python3.12, curl, screen, git..."
   sudo apt update
-  sudo apt install -y nodejs python3.12 python3.12-venv python3.12-distutils curl screen git yarn
+  sudo apt install -y nodejs python3.12 python3.12-venv python3-distutils curl screen git
+  # 安装yarn（用corepack推荐方式）
+  sudo npm install -g corepack
+  corepack enable
   # Python alias 写入 bashrc
   PYTHON_ALIAS="# Python3.12 Environment Setup"
   if ! grep -q "$PYTHON_ALIAS" ~/.bashrc; then
