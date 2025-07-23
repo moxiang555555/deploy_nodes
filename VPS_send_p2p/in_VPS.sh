@@ -1,7 +1,3 @@
-# 0. 更新软件源并安装依赖
-sudo apt update
-sudo apt install -y iptables-persistent socat net-tools ufw
-
 # 启用IP转发
 echo 'net.ipv4.ip_forward=1' | sudo tee -a /etc/sysctl.conf
 sudo sysctl -p
@@ -44,12 +40,12 @@ sudo iptables -A FORWARD -p udp -s 38.101.215.13 --sport 30012 -j ACCEPT
 sudo iptables -A FORWARD -p udp -s 38.101.215.14 --sport 30013 -j ACCEPT
 
 # 保存iptables规则
-# sudo apt install iptables-persistent -y  # 已提前安装，无需重复
+sudo apt install iptables-persistent -y
 sudo iptables-save | sudo tee /etc/iptables/rules.v4
 
 # 安装socat
-# sudo apt update  # 已提前更新，无需重复
-# sudo apt install socat -y  # 已提前安装，无需重复
+sudo apt update
+sudo apt install socat -y
 
 # 启动socat端口转发（后台运行）
 nohup socat TCP-LISTEN:30011,fork TCP:38.101.215.15:30011 &
