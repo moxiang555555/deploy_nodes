@@ -84,6 +84,9 @@ nohup socat TCP-LISTEN:30012,fork TCP:38.101.215.15:30012 &
 nohup socat TCP-LISTEN:30013,fork TCP:38.101.215.15:30013 &
 
 # 10. 配置并启用ufw
+# 先确保SSH端口不会被关闭
+sudo ufw allow 22/tcp
+
 echo "正在配置并启用ufw..."
 sudo ufw allow 30011:30013/tcp
 sudo ufw allow 30011:30013/udp
