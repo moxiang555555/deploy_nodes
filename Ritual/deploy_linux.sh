@@ -249,7 +249,7 @@ if [ "$update_config_and_restart" = "true" ]; then
     # 检查并更新 docker-compose.yml 中的 depends_on 设置
     info "检查并更新 docker-compose.yaml 中的 depends_on 设置..."
     if grep -q 'depends_on: \[ redis, infernet-anvil \]' docker-compose.yaml; then
-        sed -i.bak 's/depends_on: \[ redis, infernet-anvil \]/depends_on: [ redis ]/' docker-compose.yaml
+        sed -i 's/depends_on: \[ redis, infernet-anvil \]/depends_on: [ redis ]/g' docker-compose.yaml
         info "已修改 depends_on 配置。备份文件保存在：docker-compose.yaml.bak"
     else
         info "depends_on 配置已正确，无需修改。"
@@ -300,8 +300,8 @@ if [ "$skip_to_deploy" = "true" ]; then
         attempt=1
         while [ $attempt -le $max_attempts ]; do
             if curl -L https://foundry.paradigm.xyz | bash; then
-                echo 'export PATH="$HOME/.foundry/bin:$PATH"' >> ~/.zshrc
-                source ~/.zshrc
+                echo 'export PATH="$HOME/.foundry/bin:$PATH"' >> ~/.bashrc
+                source ~/.bashrc
                 if foundryup; then
                     info "Foundry 安装成功，forge 版本：$(forge --version)"
                     break
@@ -526,8 +526,8 @@ if ! command -v forge &> /dev/null; then
     attempt=1
     while [ $attempt -le $max_attempts ]; do
         if curl -L https://foundry.paradigm.xyz | bash; then
-            echo 'export PATH="$HOME/.foundry/bin:$PATH"' >> ~/.zshrc
-            source ~/.zshrc
+            echo 'export PATH="$HOME/.foundry/bin:$PATH"' >> ~/.bashrc
+            source ~/.bashrc
             if foundryup; then
                 info "Foundry 安装成功，forge 版本：$(forge --version)"
                 break
@@ -653,9 +653,14 @@ if [ -n "$contract_address" ] && [[ "$contract_address" =~ ^0x[0-9a-fA-F]{40}$ ]
     info "部署的 SaysGM 合约地址：$contract_address"
     info "请保存此合约地址，用于后续调用！"
     call_contract_file="$HOME/infernet-container-starter/projects/hello-world/contracts/script/CallContract.s.sol"
+    
+    # 确保 script 目录存在
+    mkdir -p "$HOME/infernet-container-starter/projects/hello-world/contracts/script" || error "无法创建 script 目录"
+    
+    # 创建或更新 CallContract.s.sol
     if [ ! -f "$call_contract_file" ]; then
-        warn "未找到 CallContract.s.sol，创建默认文件..."
-        cat <<'EOF' > "$call_contract_file"
+        info "未找到 CallContract.s.sol，创建默认文件..."
+        cat <<EOF > "$call_contract_file"
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 pragma solidity ^0.8.13;
 import {Script, console2} from "forge-std/Script.sol";
@@ -665,29 +670,62 @@ contract CallContract is Script {
     function run() public {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
-        SaysGM saysGm = SaysGM(ADDRESS_TO_GM);
+        SaysGM saysGm = SaysGM($contract_address);
         saysGm.sayGM("Hello, Infernet!");
         console2.log("Called sayGM function");
         vm.stopBroadcast();
     }
 }
 EOF
-        if ! sed -i '' "s|ADDRESS_TO_GM|$contract_address|" "$call_contract_file"; then
-            error "更新 CallContract.s.sol 中的合约地址失败，请检查文件内容或权限：$call_contract_file"
-        fi
-        info "✅ 已成功创建并更新 CallContract.s.sol 中的合约地址为 $contract_address"
+        chmod 644 "$call_contract_file" || error "无法设置 CallContract.s.sol 文件权限"
+        info "✅ 已成功创建 CallContract.s.sol，合约地址为 $contract_address"
     else
-        if ! sed -i '' "s|SaysGM(0x[0-9a-fA-F]\{40\})|SaysGM($contract_address)|" "$call_contract_file"; then
-            warn "正则替换失败，尝试占位符替换..."
-            if ! sed -i '' "s|ADDRESS_TO_GM|$contract_address|" "$call_contract_file"; then
+        info "找到现有 CallContract.s.sol，尝试更新合约地址..."
+        # 备份现有文件
+        cp "$call_contract_file" "${call_contract_file}.bak.$(date +%Y%m%d_%H%M%S)"
+        # 尝试替换合约地址
+        if grep -q "SaysGM(0x" "$call_contract_file"; then
+            if sed -i "s|SaysGM(0x[0-9a-fA-F]\{40\})|SaysGM($contract_address)|g" "$call_contract_file"; then
+                info "✅ 已成功更新 CallContract.s.sol 中的合约地址为 $contract_address"
+            else
                 error "更新 CallContract.s.sol 中的合约地址失败，请检查文件内容或权限：$call_contract_file"
             fi
+        elif grep -q "ADDRESS_TO_GM" "$call_contract_file"; then
+            if sed -i "s|ADDRESS_TO_GM|$contract_address|g" "$call_contract_file"; then
+                info "✅ 已成功更新 CallContract.s.sol 中的占位符为 $contract_address"
+            else
+                error "更新 CallContract.s.sol 中的占位符失败，请检查文件内容或权限：$call_contract_file"
+            fi
+        else
+            warn "未找到 SaysGM(0x...) 或 ADDRESS_TO_GM，尝试直接插入合约地址..."
+            cat <<EOF > "$call_contract_file.tmp"
+// SPDX-License-Identifier: BSD-3-Clause-Clear
+pragma solidity ^0.8.13;
+import {Script, console2} from "forge-std/Script.sol";
+import {SaysGM} from "../src/SaysGM.sol";
+
+contract CallContract is Script {
+    function run() public {
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        vm.startBroadcast(deployerPrivateKey);
+        SaysGM saysGm = SaysGM($contract_address);
+        saysGm.sayGM("Hello, Infernet!");
+        console2.log("Called sayGM function");
+        vm.stopBroadcast();
+    }
+}
+EOF
+            mv "$call_contract_file.tmp" "$call_contract_file" || error "无法覆盖 CallContract.s.sol 文件"
+            chmod 644 "$call_contract_file" || error "无法设置 CallContract.s.sol 文件权限"
+            info "✅ 已成功重写 CallContract.s.sol，合约地址为 $contract_address"
         fi
-        info "✅ 已成功更新 CallContract.s.sol 中的合约地址为 $contract_address"
     fi
+    
+    # 验证合约地址是否正确更新
     if ! grep -q "SaysGM($contract_address)" "$call_contract_file"; then
         error "CallContract.s.sol 未正确更新合约地址，请检查文件：$call_contract_file"
     fi
+    
     info "正在调用合约..."
     call_log=$(mktemp)
     attempt=1
