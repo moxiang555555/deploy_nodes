@@ -5,9 +5,19 @@ set -o pipefail
 
 echo "🚀 Starting one-click RL-Swarm environment deployment..."
 
-# ----------- Architecture Check ----------- 
-if [[ "$(uname -s)" != "Darwin" || "$(uname -m)" != "arm64" ]]; then
-  echo "❌ This script only supports macOS with Apple Silicon (M1/M2/M3/M4). Exiting."
+# ----------- 检测操作系统 -----------
+OS_TYPE="unknown"
+if [[ "$(uname -s)" == "Darwin" ]]; then
+  OS_TYPE="macos"
+elif [[ -f /etc/os-release ]]; then
+  . /etc/os-release
+  if [[ "$ID" == "ubuntu" ]]; then
+    OS_TYPE="ubuntu"
+  fi
+fi
+
+if [[ "$OS_TYPE" == "unknown" ]]; then
+  echo "❌ 不支持的操作系统。仅支持 macOS 和 Ubuntu。"
   exit 1
 fi
 
@@ -25,50 +35,47 @@ else
   echo "✅ Hosts are already configured."
 fi
 
-# ----------- Install Homebrew ----------- 
-echo "🍺 Checking Homebrew..."
-if ! command -v brew &>/dev/null; then
-  echo "📥 Installing Homebrew..."
-  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-else
-  echo "✅ Homebrew 已安装，跳过安装。"
-fi
-
-# ----------- Configure Brew Environment Variable ----------- 
-BREW_ENV='eval "$(/opt/homebrew/bin/brew shellenv)"'
-if ! grep -q "$BREW_ENV" ~/.zshrc; then
-  echo "$BREW_ENV" >> ~/.zshrc
-fi
-eval "$(/opt/homebrew/bin/brew shellenv)"
-
-# ----------- Install Dependencies ----------- 
-echo "📦 检查并安装 Node.js, Python@3.12, curl, screen, git, yarn..."
-deps=(node python3.12 curl screen git yarn)
-brew_names=(node python@3.12 curl screen git yarn)
-
-for i in "${!deps[@]}"; do
-  dep="${deps[$i]}"
-  brew_name="${brew_names[$i]}"
-  if ! command -v $dep &>/dev/null; then
-    echo "📥 安装 $brew_name..."
-    while true; do
-      if brew install $brew_name; then
-        echo "✅ $brew_name 安装成功。"
-        break
-      else
-        echo "⚠️ $brew_name 安装失败，3秒后重试..."
-        sleep 3
-      fi
-    done
+# ----------- 安装依赖 -----------
+if [[ "$OS_TYPE" == "macos" ]]; then
+  echo "🍺 Checking Homebrew..."
+  if ! command -v brew &>/dev/null; then
+    echo "📥 Installing Homebrew..."
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
   else
-    echo "✅ $dep 已安装，跳过安装。"
+    echo "✅ Homebrew 已安装，跳过安装。"
   fi
-done
-
-# ----------- Set Python 3.12 Alias ----------- 
-PYTHON_ALIAS="# Python3.12 Environment Setup"
-if ! grep -q "$PYTHON_ALIAS" ~/.zshrc; then
-  cat << 'EOF' >> ~/.zshrc
+  # 配置 Brew 环境变量
+  BREW_ENV='eval "$(/opt/homebrew/bin/brew shellenv)"'
+  if ! grep -q "$BREW_ENV" ~/.zshrc; then
+    echo "$BREW_ENV" >> ~/.zshrc
+  fi
+  eval "$(/opt/homebrew/bin/brew shellenv)"
+  # 安装依赖
+  echo "📦 检查并安装 Node.js, Python@3.12, curl, screen, git, yarn..."
+  deps=(node python3.12 curl screen git yarn)
+  brew_names=(node python@3.12 curl screen git yarn)
+  for i in "${!deps[@]}"; do
+    dep="${deps[$i]}"
+    brew_name="${brew_names[$i]}"
+    if ! command -v $dep &>/dev/null; then
+      echo "📥 安装 $brew_name..."
+      while true; do
+        if brew install $brew_name; then
+          echo "✅ $brew_name 安装成功。"
+          break
+        else
+          echo "⚠️ $brew_name 安装失败，3秒后重试..."
+          sleep 3
+        fi
+      done
+    else
+      echo "✅ $dep 已安装，跳过安装。"
+    fi
+  done
+  # Python alias 写入 zshrc
+  PYTHON_ALIAS="# Python3.12 Environment Setup"
+  if ! grep -q "$PYTHON_ALIAS" ~/.zshrc; then
+    cat << 'EOF' >> ~/.zshrc
 
 # Python3.12 Environment Setup
 if [[ $- == *i* ]]; then
@@ -78,12 +85,32 @@ if [[ $- == *i* ]]; then
   alias pip3="/opt/homebrew/bin/pip3.12"
 fi
 EOF
+  fi
+  source ~/.zshrc || true
+else
+  # Ubuntu
+  echo "📦 检查并安装 Node.js, Python3.12, curl, screen, git, yarn..."
+  sudo apt update
+  sudo apt install -y nodejs python3.12 python3.12-venv python3.12-distutils curl screen git yarn
+  # Python alias 写入 bashrc
+  PYTHON_ALIAS="# Python3.12 Environment Setup"
+  if ! grep -q "$PYTHON_ALIAS" ~/.bashrc; then
+    cat << 'EOF' >> ~/.bashrc
+
+# Python3.12 Environment Setup
+if [[ $- == *i* ]]; then
+  alias python="/usr/bin/python3.12"
+  alias python3="/usr/bin/python3.12"
+  alias pip="/usr/bin/pip3.12"
+  alias pip3="/usr/bin/pip3.12"
+fi
+EOF
+  fi
+  source ~/.bashrc || true
 fi
 
-source ~/.zshrc || true
-
 # ----------- 克隆前备份关键文件（优先$HOME/rl-swarm-0.5.3及其user子目录，无则$HOME/rl-swarm-0.5/user） -----------
-TMP_USER_FILES="/tmp/rl-swarm-user-files"
+TMP_USER_FILES="$HOME/rl-swarm-user-files"
 mkdir -p "$TMP_USER_FILES"
 
 # swarm.pem
