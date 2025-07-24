@@ -89,12 +89,11 @@ EOF
   source ~/.zshrc || true
 else
   # Ubuntu
-  echo "📦 检查并安装 Node.js, Python3.12, curl, screen, git..."
-  sudo apt update
-  sudo apt install -y nodejs python3.12 python3.12-venv python3-distutils curl screen git
-  # 安装yarn（用corepack推荐方式）
-  sudo npm install -g corepack
-  corepack enable
+  echo "📦 检查并安装 Python3, curl, screen, git, yarn..."
+  sudo apt update && sudo apt install -y python3 python3-venv python3-pip curl screen git
+  curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
+  echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
+  sudo apt update && sudo apt install -y yarn
   # Python alias 写入 bashrc
   PYTHON_ALIAS="# Python3.12 Environment Setup"
   if ! grep -q "$PYTHON_ALIAS" ~/.bashrc; then
@@ -102,10 +101,10 @@ else
 
 # Python3.12 Environment Setup
 if [[ $- == *i* ]]; then
-  alias python="/usr/bin/python3.12"
-  alias python3="/usr/bin/python3.12"
-  alias pip="/usr/bin/pip3.12"
-  alias pip3="/usr/bin/pip3.12"
+  alias python="/usr/bin/python3"
+  alias python3="/usr/bin/python3"
+  alias pip="/usr/bin/pip3"
+  alias pip3="/usr/bin/pip3"
 fi
 EOF
   fi
