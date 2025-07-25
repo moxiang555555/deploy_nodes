@@ -89,13 +89,21 @@ EOF
   source ~/.zshrc || true
 else
   # Ubuntu
-  echo "📦 检查并安装 Python3, curl, screen, git, yarn..."
+  echo "📦 检查并安装 Node.js (最新LTS), Python3, curl, screen, git, yarn..."
+  # 安装最新Node.js（LTS）
+  sudo apt remove -y nodejs || true
+  curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+  sudo apt-get install -y nodejs
+  # 其余依赖
   sudo apt update && sudo apt install -y python3 python3-venv python3-pip curl screen git gnupg
   # 官方推荐方式，若失败则用npm镜像
   if curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | gpg --dearmor | sudo tee /usr/share/keyrings/yarnkey.gpg > /dev/null \
     && echo "deb [signed-by=/usr/share/keyrings/yarnkey.gpg] https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list \
     && sudo apt update && sudo apt install -y yarn; then
     echo "✅ yarn 安装成功（官方源）"
+    # 升级到最新版yarn（Berry）
+    yarn set version stable
+    yarn -v
   else
     echo "⚠️ 官方源安装 yarn 失败，尝试用 npm 镜像安装..."
     if ! command -v npm &>/dev/null; then
@@ -103,6 +111,9 @@ else
     fi
     npm config set registry https://registry.npmmirror.com
     npm install -g yarn
+    # 升级到最新版yarn（Berry）
+    yarn set version stable
+    yarn -v
   fi
   # Python alias 写入 bashrc
   PYTHON_ALIAS="# Python3.12 Environment Setup"
