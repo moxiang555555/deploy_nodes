@@ -51,14 +51,14 @@ fi
 echo "[4/15] 检查 rl-swarm-0.5.3 仓库..." | tee -a "$log_file"
 if [ ! -d "$HOME/rl-swarm-0.5.3" ]; then
     info "正在克隆 Gensyn RL Swarm 0.5.3 仓库..."
-    git clone https://github.com/readyName/rl-swarm-0.5.3.git "$HOME/rl-swarm-0.5.3" || error "克隆失败"
+    git clone https://github.com/readyName/rl-swarm-0.5.6.git "$HOME/rl-swarm-0.5.6" || error "克隆失败"
 else
     info "目录已存在：$HOME/rl-swarm-0.5.3"
     read -rp "是否覆盖现有 rl-swarm-0.5.3 目录？（y/N）： " overwrite
     if [[ "$overwrite" =~ ^[Yy]$ ]]; then
         info "删除旧目录..."
         rm -rf "$HOME/rl-swarm-0.5.3" || error "删除失败"
-        git clone https://github.com/readyName/rl-swarm-0.5.3.git "$HOME/rl-swarm-0.5.3" || error "克隆失败"
+        git clone https://github.com/readyName/rl-swarm-0.5.6.git "$HOME/rl-swarm-0.5.6" || error "克隆失败"
     else
         info "保留旧目录，跳过克隆"
     fi
