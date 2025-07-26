@@ -90,12 +90,38 @@ EOF
 else
   # Ubuntu
   echo "📦 检查并安装 Node.js (最新LTS), Python3, curl, screen, git, yarn..."
-  # 安装最新Node.js（LTS）
-  sudo apt remove -y nodejs || true
-  curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
-  sudo apt-get install -y nodejs
+  # 检查当前Node.js版本
+  if command -v node &>/dev/null; then
+    CURRENT_NODE_VERSION=$(node --version 2>/dev/null | sed 's/v//')
+    echo "🔍 当前 Node.js 版本: $CURRENT_NODE_VERSION"
+    # 获取最新LTS版本
+    LATEST_LTS_VERSION=$(curl -s https://nodejs.org/dist/index.json | jq -r '.[0].version' 2>/dev/null | sed 's/v//')
+    echo "🔍 最新 LTS 版本: $LATEST_LTS_VERSION"
+    
+    if [[ "$CURRENT_NODE_VERSION" != "$LATEST_LTS_VERSION" ]]; then
+      echo "🔄 检测到版本不匹配，正在更新到最新 LTS 版本..."
+      # 卸载旧版本
+      sudo apt remove -y nodejs npm || true
+      sudo apt autoremove -y || true
+      # 清理可能的残留
+      sudo rm -rf /usr/local/bin/npm /usr/local/bin/node || true
+      sudo rm -rf ~/.npm || true
+      # 安装最新LTS版本
+      curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+      sudo apt-get install -y nodejs
+      echo "✅ Node.js 已更新到最新 LTS 版本"
+    else
+      echo "✅ Node.js 已是最新 LTS 版本，跳过更新"
+    fi
+  else
+    echo "📥 未检测到 Node.js，正在安装最新 LTS 版本..."
+    # 安装最新Node.js（LTS）
+    curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+    sudo apt-get install -y nodejs
+    echo "✅ Node.js 安装完成"
+  fi
   # 其余依赖
-  sudo apt update && sudo apt install -y python3 python3-venv python3-pip curl screen git gnupg
+  sudo apt update && sudo apt install -y python3 python3-venv python3-pip curl screen git gnupg jq
   # 官方推荐方式，若失败则用npm镜像
   if curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | gpg --dearmor | sudo tee /usr/share/keyrings/yarnkey.gpg > /dev/null \
     && echo "deb [signed-by=/usr/share/keyrings/yarnkey.gpg] https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list \
