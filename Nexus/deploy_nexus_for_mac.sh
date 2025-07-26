@@ -299,12 +299,17 @@ install_nexus_cli() {
       sleep 2
     fi
   done
-  # 只加载 .zshrc，如果没有就生成并写入 PATH 变量
-  if [[ ! -f "$HOME/.zshrc" ]]; then
-    echo 'export PATH="$HOME/.cargo/bin:$PATH"' > "$HOME/.zshrc"
-    log "${YELLOW}未检测到 ~/.zshrc，已自动生成并写入 PATH 变量。${NC}"
+  # 确保配置文件存在，如果没有就生成并写入 PATH 变量
+  if [[ ! -f "$CONFIG_FILE" ]]; then
+    echo "export PATH=\"$HOME/.cargo/bin:\$PATH\"" > "$CONFIG_FILE"
+    log "${YELLOW}未检测到 $CONFIG_FILE，已自动生成并写入 PATH 变量。${NC}"
   fi
-  source "$HOME/.zshrc" 2>/dev/null && log "${GREEN}已自动加载 ~/.zshrc 环境变量。${NC}" || log "${YELLOW}未能自动加载 ~/.zshrc，请手动执行 source ~/.zshrc。${NC}"
+  # 更新CLI后加载环境变量
+  source "$CONFIG_FILE" 2>/dev/null && log "${GREEN}已自动加载 $CONFIG_FILE 环境变量。${NC}" || log "${YELLOW}未能自动加载 $CONFIG_FILE，请手动执行 source $CONFIG_FILE。${NC}"
+  # 额外加载.zshrc确保环境变量生效
+  if [[ -f "$HOME/.zshrc" ]]; then
+    source "$HOME/.zshrc" 2>/dev/null && log "${GREEN}已额外加载 ~/.zshrc 环境变量。${NC}" || log "${YELLOW}未能加载 ~/.zshrc，请手动执行 source ~/.zshrc。${NC}"
+  fi
   if [[ "$success" == false ]]; then
     log "${RED}Nexus CLI 安装/更新失败 $max_attempts 次，将尝试使用当前版本运行节点。${NC}"
   fi
