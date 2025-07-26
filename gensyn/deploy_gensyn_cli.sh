@@ -170,25 +170,25 @@ else
 fi
 
 # ----------- Clone Repo ----------- 
-if [[ -d "rl-swarm-0.5.6" ]]; then
-  echo "⚠️ 检测到已存在目录 'rl-swarm-0.5.6'。"
+if [[ -d "rl-swarm" ]]; then
+  echo "⚠️ 检测到已存在目录 'rl-swarm'。"
   read -p "是否覆盖（删除后重新克隆）该目录？(y/n): " confirm
   if [[ "$confirm" =~ ^[Yy]$ ]]; then
     echo "🗑️ 正在删除旧目录..."
-    rm -rf rl-swarm-0.5.6
+    rm -rf rl-swarm
     echo "📥 正在克隆 rl-swarm 仓库..."
-    git clone https://github.com/readyName/rl-swarm-0.5.6.git
+    git clone https://github.com/readyName/rl-swarm.git
   else
     echo "❌ 跳过克隆，继续后续流程。"
   fi
 else
   echo "📥 正在克隆 rl-swarm 仓库..."
-  git clone https://github.com/readyName/rl-swarm-0.5.6.git
+  git clone https://github.com/readyName/rl-swarm.git
 fi
 
 # ----------- 复制临时目录中的 user 关键文件 -----------
-KEY_DST="rl-swarm-0.5.6/swarm.pem"
-MODAL_DST="rl-swarm-0.5.6/modal-login/temp-data"
+KEY_DST="rl-swarm/swarm.pem"
+MODAL_DST="rl-swarm/modal-login/temp-data"
 mkdir -p "$MODAL_DST"
 
 if [ -f "$TMP_USER_FILES/swarm.pem" ]; then
@@ -208,7 +208,7 @@ done
 
 # ----------- 生成桌面可双击运行的 .command 文件 -----------
 if [[ "$OS_TYPE" == "macos" ]]; then
-  PROJECT_DIR="$HOME/rl-swarm-0.5.6"
+  PROJECT_DIR="$HOME/rl-swarm"
   DESKTOP_DIR="$HOME/Desktop"
   mkdir -p "$DESKTOP_DIR"
   for script in gensyn.sh nexus.sh ritual.sh wai.sh startAll.sh; do
@@ -227,7 +227,7 @@ fi
 echo "🧹 Cleaning up port 3000..."
 pid=$(lsof -ti:3000) && [ -n "$pid" ] && kill -9 $pid && echo "✅ Killed: $pid" || echo "✅ Port 3000 is free."
 
-# ----------- 进入rl-swarm-0.5.6目录并执行-----------
-cd rl-swarm-0.5.6 || { echo "❌ 进入 rl-swarm-0.5.6 目录失败"; exit 1; }
+# ----------- 进入rl-swarm目录并执行-----------
+cd rl-swarm || { echo "❌ 进入 rl-swarm 目录失败"; exit 1; }
 chmod +x gensyn.sh
 ./gensyn.sh
