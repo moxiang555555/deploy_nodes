@@ -526,11 +526,24 @@ if ! command -v forge &> /dev/null; then
     attempt=1
     while [ $attempt -le $max_attempts ]; do
         if curl -L https://foundry.paradigm.xyz | bash; then
-            echo 'export PATH="$HOME/.foundry/bin:$PATH"' >> ~/.bashrc
-            source ~/.bashrc
-            if foundryup; then
-                info "Foundry 安装成功，forge 版本：$(forge --version)"
-                break
+            # 确保环境变量正确设置
+            export PATH="$HOME/.foundry/bin:$PATH"
+            # 重新加载 bashrc
+            source ~/.bashrc 2>/dev/null || true
+            # 等待一下让安装完成
+            sleep 5
+            # 尝试运行 foundryup
+            if "$HOME/.foundry/bin/foundryup" 2>/dev/null || foundryup 2>/dev/null; then
+                # 再次确保环境变量加载
+                export PATH="$HOME/.foundry/bin:$PATH"
+                source ~/.bashrc 2>/dev/null || true
+                # 检查 forge 是否可用
+                if forge --version &>/dev/null; then
+                    info "Foundry 安装成功，forge 版本：$(forge --version)"
+                    break
+                else
+                    warn "Foundry 安装完成但 forge 命令不可用，第 $attempt/$max_attempts 次重试..."
+                fi
             else
                 warn "Foundry 更新失败，第 $attempt/$max_attempts 次重试..."
             fi
@@ -788,6 +801,6 @@ monitor_and_skip_trie_error() {
 }
 
 # 启动守护进程（后台运行）
-nohup bash -c 'monitor_and_skip_trie_error' >/dev/null 2>&1 &
+monitor_and_skip_trie_error &
 
 exit 0

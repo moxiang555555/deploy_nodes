@@ -51,9 +51,9 @@ if [[ "$OS_TYPE" == "macos" ]]; then
   fi
   eval "$(/opt/homebrew/bin/brew shellenv)"
   # 安装依赖
-  echo "📦 检查并安装 Node.js, Python@3.12, curl, screen, git, yarn..."
-  deps=(node python3.12 curl screen git yarn)
-  brew_names=(node python@3.12 curl screen git yarn)
+  echo "📦 检查并安装 Node.js, Python@3.10, curl, screen, git, yarn..."
+  deps=(node python3.10 curl screen git yarn)
+  brew_names=(node python@3.10 curl screen git yarn)
   for i in "${!deps[@]}"; do
     dep="${deps[$i]}"
     brew_name="${brew_names[$i]}"
@@ -72,17 +72,33 @@ if [[ "$OS_TYPE" == "macos" ]]; then
       echo "✅ $dep 已安装，跳过安装。"
     fi
   done
+  # 检查并安装 Python 3.10
+  echo "🔍 检查 Python 3.10..."
+  if ! command -v python3.10 &>/dev/null; then
+    echo "📥 安装 Python 3.10..."
+    brew install python@3.10 || echo "⚠️ Python 3.10 安装失败，继续使用现有版本"
+  else
+    echo "✅ Python 3.10 已安装"
+  fi
+  
   # Python alias 写入 zshrc
-  PYTHON_ALIAS="# Python3.12 Environment Setup"
+  PYTHON_ALIAS="# Python3.10 Environment Setup"
+  # 删除旧的 Python 配置（无论是 3.12 还是其他版本）
+  if grep -q "Python3.12 Environment Setup\|Python3.10 Environment Setup" ~/.zshrc; then
+    echo "🧹 清理旧的 Python 配置..."
+    sed -i '' '/# Python3.12 Environment Setup/,/^fi$/d' ~/.zshrc
+    sed -i '' '/# Python3.10 Environment Setup/,/^fi$/d' ~/.zshrc
+  fi
+  
   if ! grep -q "$PYTHON_ALIAS" ~/.zshrc; then
     cat << 'EOF' >> ~/.zshrc
 
-# Python3.12 Environment Setup
+# Python3.10 Environment Setup
 if [[ $- == *i* ]]; then
-  alias python="/opt/homebrew/bin/python3.12"
-  alias python3="/opt/homebrew/bin/python3.12"
-  alias pip="/opt/homebrew/bin/pip3.12"
-  alias pip3="/opt/homebrew/bin/pip3.12"
+  alias python="/opt/homebrew/bin/python3.10"
+  alias python3="/opt/homebrew/bin/python3.10"
+  alias pip="/opt/homebrew/bin/pip3.10"
+  alias pip3="/opt/homebrew/bin/pip3.10"
 fi
 EOF
   fi
