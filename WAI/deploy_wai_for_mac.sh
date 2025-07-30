@@ -124,7 +124,6 @@ run_with_timeout() {
 }
 
 run_wai_worker() {
-    WAI_CMD="$HOME/.local/bin/wai"
     RETRY=1
     log "开始运行 WAI Worker..."
     while true; do
@@ -144,7 +143,7 @@ run_wai_worker() {
             log "✅ 无wai run进程需要清理"
         fi
         log "✅ 启动 Worker（限时5分钟）..."
-        run_with_timeout 300 env POSTHOG_DISABLED=true "$WAI_CMD" run
+        run_with_timeout 300 env POSTHOG_DISABLED=true wai run
         EXIT_CODE=$?
         if [ $EXIT_CODE -eq 124 ]; then
             warn "⏰ Worker 已运行5分钟，强制重启..."
