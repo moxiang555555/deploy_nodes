@@ -111,19 +111,7 @@ configure_env() {
     fi
 }
 
-# 通用超时函数（替代timeout/gtimeout）
-run_with_timeout() {
-  local duration=$1
-  shift
-  "$@" &
-  cmd_pid=$!
-  ( sleep "$duration" && kill -9 $cmd_pid 2>/dev/null ) &
-  watcher_pid=$!
-  wait $cmd_pid 2>/dev/null
-  status=$?
-  kill -9 $watcher_pid 2>/dev/null
-  return $status
-}
+
 
 run_wai_worker() {
     RETRY=1
@@ -144,14 +132,10 @@ run_wai_worker() {
         else
             log "✅ 无wai run进程需要清理"
         fi
-        log "✅ 启动 Worker（限时5分钟）..."
-        run_with_timeout 300 env POSTHOG_DISABLED=true wai run
+        log "✅ 启动 Worker..."
+        env POSTHOG_DISABLED=true wai run
         EXIT_CODE=$?
-        if [ $EXIT_CODE -eq 124 ]; then
-            warn "⏰ Worker 已运行5分钟，强制重启..."
-            RETRY=1
-            sleep 2
-        elif [ $EXIT_CODE -ne 0 ]; then
+        if [ $EXIT_CODE -ne 0 ]; then
             warn "⚠️ Worker 异常退出（退出码 $EXIT_CODE），等待 10 秒后重试..."
             sleep 10
             RETRY=$(( RETRY < 8 ? RETRY+1 : 8 ))
