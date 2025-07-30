@@ -84,6 +84,8 @@ install_wai_cli() {
         echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
         echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
         export PATH="$HOME/.local/bin:$PATH"
+        source ~/.zshrc || true     
+        source ~/.bashrc || true
         log "WAI CLI 安装成功"
     else
         log "WAI CLI 已安装，版本：$(wai --version)"
