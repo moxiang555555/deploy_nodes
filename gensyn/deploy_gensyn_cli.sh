@@ -174,12 +174,14 @@ EOF
   source ~/.bashrc || true
 fi
 
-# ----------- 克隆前备份关键文件（优先$HOME/rl-swarm-0.5.3及其user子目录，无则$HOME/rl-swarm-0.5/user） -----------
+# ----------- 克隆前备份关键文件（优先$HOME/rl-swarm，其次$HOME/rl-swarm-0.5.3及其user子目录，无则$HOME/rl-swarm-0.5/user） -----------
 TMP_USER_FILES="$HOME/rl-swarm-user-files"
 mkdir -p "$TMP_USER_FILES"
 
 # swarm.pem
-if [ -f "$HOME/rl-swarm-0.5.3/swarm.pem" ]; then
+if [ -f "$HOME/rl-swarm/swarm.pem" ]; then
+  cp "$HOME/rl-swarm/swarm.pem" "$TMP_USER_FILES/swarm.pem" && echo "✅ 已备份 rl-swarm/swarm.pem"
+elif [ -f "$HOME/rl-swarm-0.5.3/swarm.pem" ]; then
   cp "$HOME/rl-swarm-0.5.3/swarm.pem" "$TMP_USER_FILES/swarm.pem" && echo "✅ 已备份 rl-swarm-0.5.3/swarm.pem"
 elif [ -f "$HOME/rl-swarm-0.5.3/user/keys/swarm.pem" ]; then
   cp "$HOME/rl-swarm-0.5.3/user/keys/swarm.pem" "$TMP_USER_FILES/swarm.pem" && echo "✅ 已备份 rl-swarm-0.5.3/user/keys/swarm.pem"
@@ -190,7 +192,9 @@ else
 fi
 
 # userApiKey.json
-if [ -f "$HOME/rl-swarm-0.5.3/modal-login/temp-data/userApiKey.json" ]; then
+if [ -f "$HOME/rl-swarm/modal-login/temp-data/userApiKey.json" ]; then
+  cp "$HOME/rl-swarm/modal-login/temp-data/userApiKey.json" "$TMP_USER_FILES/userApiKey.json" && echo "✅ 已备份 rl-swarm/modal-login/temp-data/userApiKey.json"
+elif [ -f "$HOME/rl-swarm-0.5.3/modal-login/temp-data/userApiKey.json" ]; then
   cp "$HOME/rl-swarm-0.5.3/modal-login/temp-data/userApiKey.json" "$TMP_USER_FILES/userApiKey.json" && echo "✅ 已备份 rl-swarm-0.5.3/modal-login/temp-data/userApiKey.json"
 elif [ -f "$HOME/rl-swarm-0.5.3/user/modal-login/userApiKey.json" ]; then
   cp "$HOME/rl-swarm-0.5.3/user/modal-login/userApiKey.json" "$TMP_USER_FILES/userApiKey.json" && echo "✅ 已备份 rl-swarm-0.5.3/user/modal-login/userApiKey.json"
@@ -201,7 +205,9 @@ else
 fi
 
 # userData.json
-if [ -f "$HOME/rl-swarm-0.5.3/modal-login/temp-data/userData.json" ]; then
+if [ -f "$HOME/rl-swarm/modal-login/temp-data/userData.json" ]; then
+  cp "$HOME/rl-swarm/modal-login/temp-data/userData.json" "$TMP_USER_FILES/userData.json" && echo "✅ 已备份 rl-swarm/modal-login/temp-data/userData.json"
+elif [ -f "$HOME/rl-swarm-0.5.3/modal-login/temp-data/userData.json" ]; then
   cp "$HOME/rl-swarm-0.5.3/modal-login/temp-data/userData.json" "$TMP_USER_FILES/userData.json" && echo "✅ 已备份 rl-swarm-0.5.3/modal-login/temp-data/userData.json"
 elif [ -f "$HOME/rl-swarm-0.5.3/user/modal-login/userData.json" ]; then
   cp "$HOME/rl-swarm-0.5.3/user/modal-login/userData.json" "$TMP_USER_FILES/userData.json" && echo "✅ 已备份 rl-swarm-0.5.3/user/modal-login/userData.json"
