@@ -80,6 +80,11 @@ cleanup_wombo() {
 install_wai_cli() {
     if ! command -v wai >/dev/null 2>&1; then
         log "安装 WAI CLI..."
+        # 先安装 bash
+        if [[ "$OS_TYPE" == "macos" ]]; then
+            log "安装 bash..."
+            brew install bash || error "bash 安装失败"
+        fi
         curl -fsSL https://app.w.ai/install.sh | bash || error "WAI CLI 安装失败"
         echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
         echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
