@@ -100,12 +100,48 @@ install_wai_cli() {
 configure_env() {
     BASH_CONFIG="$HOME/.bashrc"
     ZSH_CONFIG="$HOME/.zshrc"
+    
+    # 检查是否已存在 WAI API KEY
     if grep -q "^export W_AI_API_KEY=" "$BASH_CONFIG" 2>/dev/null; then
         export W_AI_API_KEY=$(grep "^export W_AI_API_KEY=" "$BASH_CONFIG" | sed 's/.*=//;s/\"//g')
-        log "已从 ~/.bashrc 加载 W_AI_API_KEY"
+        log "已从 ~/.bashrc 加载 W_AI_API_KEY: ${W_AI_API_KEY:0:8}..."
+        
+        # 询问用户是否要更换 API KEY（5秒超时，默认不更换）
+        echo -n "是否要更换 WAI API 密钥？(y/n, 5秒后默认n): "
+        read -t 5 -r change_key
+        change_key=${change_key:-n}  # 默认值为 n
+        if [[ "$change_key" =~ ^[Yy]$ ]]; then
+            read -r -p "请输入新的 WAI API 密钥: " api_key
+            [[ -z "$api_key" ]] && error "W_AI_API_KEY 不能为空"
+            
+            # 更新配置文件中的 API KEY（不创建备份）
+            sed -i "s/^export W_AI_API_KEY=.*/export W_AI_API_KEY=\"$api_key\"/" "$BASH_CONFIG"
+            sed -i "s/^export W_AI_API_KEY=.*/export W_AI_API_KEY=\"$api_key\"/" "$ZSH_CONFIG"
+            export W_AI_API_KEY="$api_key"
+            log "W_AI_API_KEY 已更新并加载"
+        else
+            log "保持现有 WAI API KEY 不变"
+        fi
     elif grep -q "^export W_AI_API_KEY=" "$ZSH_CONFIG" 2>/dev/null; then
         export W_AI_API_KEY=$(grep "^export W_AI_API_KEY=" "$ZSH_CONFIG" | sed 's/.*=//;s/\"//g')
-        log "已从 ~/.zshrc 加载 W_AI_API_KEY"
+        log "已从 ~/.zshrc 加载 W_AI_API_KEY: ${W_AI_API_KEY:0:8}..."
+        
+        # 询问用户是否要更换 API KEY（5秒超时，默认不更换）
+        echo -n "是否要更换 WAI API 密钥？(y/n, 5秒后默认n): "
+        read -t 5 -r change_key
+        change_key=${change_key:-n}  # 默认值为 n
+        if [[ "$change_key" =~ ^[Yy]$ ]]; then
+            read -r -p "请输入新的 WAI API 密钥: " api_key
+            [[ -z "$api_key" ]] && error "W_AI_API_KEY 不能为空"
+            
+            # 更新配置文件中的 API KEY（不创建备份）
+            sed -i "s/^export W_AI_API_KEY=.*/export W_AI_API_KEY=\"$api_key\"/" "$BASH_CONFIG"
+            sed -i "s/^export W_AI_API_KEY=.*/export W_AI_API_KEY=\"$api_key\"/" "$ZSH_CONFIG"
+            export W_AI_API_KEY="$api_key"
+            log "W_AI_API_KEY 已更新并加载"
+        else
+            log "保持现有 WAI API KEY 不变"
+        fi
     else
         read -r -p "请输入你的 WAI API 密钥: " api_key
         [[ -z "$api_key" ]] && error "W_AI_API_KEY 不能为空"

@@ -244,8 +244,9 @@ done
 
 # ----------- 生成桌面可双击运行的 .command 文件 -----------
 if [[ "$OS_TYPE" == "macos" ]]; then
-  PROJECT_DIR="$HOME/rl-swarm"
-  DESKTOP_DIR="$HOME/Desktop"
+  CURRENT_USER=$(whoami)
+  PROJECT_DIR="/Users/$CURRENT_USER/rl-swarm"
+  DESKTOP_DIR="/Users/$CURRENT_USER/Desktop"
   mkdir -p "$DESKTOP_DIR"
   for script in gensyn.sh nexus.sh ritual.sh wai.sh startAll.sh; do
     cmd_name="${script%.sh}.command"
