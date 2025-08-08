@@ -103,12 +103,12 @@ install_java() {
     ARCH=$(uname -m)
     if [[ "$ARCH" == "arm64" ]]; then
         log "检测到 Apple Silicon (ARM64) 架构"
-        # 对于 Apple Silicon，使用 temurin8 或 adoptopenjdk8
-        if brew list | grep -q "temurin8"; then
+        # 对于 Apple Silicon，使用 temurin@8
+        if brew list --cask | grep -q "temurin@8"; then
             log "✅ Temurin8 已安装，跳过安装步骤"
         else
             log "📥 安装 Temurin8 (适用于 Apple Silicon)..."
-            brew install --cask temurin8 || error "Temurin8 安装失败"
+            brew install --cask temurin@8 || error "Temurin8 安装失败"
         fi
         
         # 配置 Java 环境变量
