@@ -99,19 +99,48 @@ install_java() {
     
     log "📥 安装 Java 1.8.0_152..."
     
-    # 使用 Homebrew 安装 OpenJDK 8
-    brew install openjdk@8 || error "Java 安装失败"
-    
-    # 配置 Java 环境变量
-    JAVA_HOME_PATH=$(brew --prefix openjdk@8)
-    echo "export JAVA_HOME=$JAVA_HOME_PATH" >> ~/.zshrc
-    echo "export PATH=\$JAVA_HOME/bin:\$PATH" >> ~/.zshrc
-    
-    # 加载环境变量
-    export JAVA_HOME="$JAVA_HOME_PATH"
-    export PATH="$JAVA_HOME/bin:$PATH"
-    
-    log "✅ Java 安装完成"
+    # 检测芯片架构
+    ARCH=$(uname -m)
+    if [[ "$ARCH" == "arm64" ]]; then
+        log "检测到 Apple Silicon (ARM64) 架构"
+        # 对于 Apple Silicon，使用 temurin8 或 adoptopenjdk8
+        if brew list | grep -q "temurin8"; then
+            log "✅ Temurin8 已安装，跳过安装步骤"
+        else
+            log "📥 安装 Temurin8 (适用于 Apple Silicon)..."
+            brew install --cask temurin8 || error "Temurin8 安装失败"
+        fi
+        
+        # 配置 Java 环境变量
+        JAVA_HOME_PATH="/Library/Java/JavaVirtualMachines/temurin-8.jdk/Contents/Home"
+        if [ -d "$JAVA_HOME_PATH" ]; then
+            echo "export JAVA_HOME=$JAVA_HOME_PATH" >> ~/.zshrc
+            echo "export PATH=\$JAVA_HOME/bin:\$PATH" >> ~/.zshrc
+            
+            # 加载环境变量
+            export JAVA_HOME="$JAVA_HOME_PATH"
+            export PATH="$JAVA_HOME/bin:$PATH"
+            
+            log "✅ Java 安装完成 (Temurin8)"
+        else
+            error "Temurin8 安装路径未找到"
+        fi
+    else
+        log "检测到 Intel (x86_64) 架构"
+        # 对于 Intel Mac，使用 OpenJDK 8
+        brew install openjdk@8 || error "Java 安装失败"
+        
+        # 配置 Java 环境变量
+        JAVA_HOME_PATH=$(brew --prefix openjdk@8)
+        echo "export JAVA_HOME=$JAVA_HOME_PATH" >> ~/.zshrc
+        echo "export PATH=\$JAVA_HOME/bin:\$PATH" >> ~/.zshrc
+        
+        # 加载环境变量
+        export JAVA_HOME="$JAVA_HOME_PATH"
+        export PATH="$JAVA_HOME/bin:$PATH"
+        
+        log "✅ Java 安装完成 (OpenJDK 8)"
+    fi
 }
 
 # 运行 setup.sh
