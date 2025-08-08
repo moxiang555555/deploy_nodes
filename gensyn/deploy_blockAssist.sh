@@ -276,12 +276,12 @@ main() {
     
     check_system
     install_homebrew
-    clone_repository
     install_java
-    run_setup
     install_pyenv
     install_python
     install_python_deps
+    clone_repository
+    run_setup
     configure_hf_token
     
     log "✅ 所有依赖安装完成，准备启动 BlockAssist..."
