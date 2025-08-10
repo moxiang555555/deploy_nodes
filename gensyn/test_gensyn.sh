@@ -98,29 +98,26 @@ else
   if command -v node &>/dev/null; then
     CURRENT_NODE_VERSION=$(node --version 2>/dev/null | sed 's/v//')
     echo "🔍 当前 Node.js 版本: $CURRENT_NODE_VERSION"
-    # 获取最新LTS版本（添加超时和错误处理）
-    echo "🔍 正在获取最新 LTS 版本信息..."
-    LATEST_LTS_VERSION=$(timeout 10 curl -s https://nodejs.org/dist/index.json 2>/dev/null | jq -r '.[0].version' 2>/dev/null | sed 's/v//')
+    # 获取最新LTS版本
+    LATEST_LTS_VERSION=$(curl -s https://nodejs.org/dist/index.json | jq -r '.[0].version' 2>/dev/null | sed 's/v//')
+    echo "🔍 最新 LTS 版本: $LATEST_LTS_VERSION"
     
-    if [[ -n "$LATEST_LTS_VERSION" && "$LATEST_LTS_VERSION" != "null" ]]; then
-        echo "🔍 最新 LTS 版本: $LATEST_LTS_VERSION"
-        
-        if [[ "$CURRENT_NODE_VERSION" != "$LATEST_LTS_VERSION" ]]; then
-          echo "🔄 检测到版本不匹配，正在更新到最新 LTS 版本..."
-          # 卸载旧版本
-          sudo apt remove -y nodejs npm || true
-          sudo apt autoremove -y || true
-          # 清理可能的残留
-          sudo rm -rf /usr/local/bin/npm /usr/local/bin/node || true
-          sudo rm -rf ~/.npm || true
-          # 安装最新LTS版本
-          curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
-          sudo apt-get install -y nodejs
-          echo "✅ Node.js 已更新到最新 LTS 版本"
-        else
-          echo "✅ Node.js 已是最新 LTS 版本，跳过更新"
-        fi
+    if [[ "$CURRENT_NODE_VERSION" != "$LATEST_LTS_VERSION" ]]; then
+      echo "🔄 检测到版本不匹配，正在更新到最新 LTS 版本..."
+      # 卸载旧版本
+      sudo apt remove -y nodejs npm || true
+      sudo apt autoremove -y || true
+      # 清理可能的残留
+      sudo rm -rf /usr/local/bin/npm /usr/local/bin/node || true
+      sudo rm -rf ~/.npm || true
+      # 安装最新LTS版本
+      curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+      sudo apt-get install -y nodejs
+      echo "✅ Node.js 已更新到最新 LTS 版本"
     else
+      echo "✅ Node.js 已是最新 LTS 版本，跳过更新"
+    fi
+  else
     echo "📥 未检测到 Node.js，正在安装最新 LTS 版本..."
     # 安装最新Node.js（LTS）
     curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
