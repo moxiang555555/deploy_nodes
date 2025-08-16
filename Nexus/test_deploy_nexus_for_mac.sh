@@ -213,10 +213,33 @@ cleanup_exit() {
   log "${YELLOW}收到退出信号，正在清理 Nexus 节点进程...${NC}"
   
   if [[ "$OS_TYPE" == "macOS" ]]; then
-    # macOS: 关闭新开的终端窗口
+    # macOS: 先终止进程，再关闭窗口
+    log "${BLUE}正在终止 Nexus 节点进程...${NC}"
+    
+    # 查找并终止 nexus-network 和 nexus-cli 进程
+    local pids=$(pgrep -f "nexus-cli\|nexus-network" | tr '\n' ' ')
+    if [[ -n "$pids" ]]; then
+      log "${BLUE}发现进程: $pids，正在终止...${NC}"
+      for pid in $pids; do
+        kill -TERM "$pid" 2>/dev/null || true
+        sleep 1
+        # 如果进程还在运行，强制终止
+        if ps -p "$pid" > /dev/null 2>&1; then
+          kill -KILL "$pid" 2>/dev/null || true
+        fi
+      done
+    fi
+    
+    # 等待进程完全终止
+    sleep 2
+    
+    # 现在安全地关闭窗口
     log "${BLUE}正在关闭 Nexus 节点终端窗口...${NC}"
+    
+    # 只关闭包含 nexus 相关内容的窗口，不影响其他终端
     osascript -e 'tell application "Terminal" to close (every window whose name contains "nexus")' 2>/dev/null || log "${YELLOW}未找到包含 nexus 的窗口${NC}"
-    sleep 1
+    osascript -e 'tell application "Terminal" to close (every window whose name contains "nexus-network")' 2>/dev/null || true
+    osascript -e 'tell application "Terminal" to close (every window whose name contains "nexus-cli")' 2>/dev/null || true
     
     # 清理 screen 会话（如果存在）
     if screen -list | grep -q "nexus_node"; then
@@ -277,18 +300,33 @@ cleanup_restart() {
   log "${YELLOW}准备重启节点，开始清理流程...${NC}"
   
   if [[ "$OS_TYPE" == "macOS" ]]; then
-    # macOS: 关闭新开的终端窗口
+    # macOS: 先终止进程，再关闭窗口
+    log "${BLUE}正在终止 Nexus 节点进程...${NC}"
+    
+    # 查找并终止 nexus-network 和 nexus-cli 进程
+    local pids=$(pgrep -f "nexus-cli\|nexus-network" | tr '\n' ' ')
+    if [[ -n "$pids" ]]; then
+      log "${BLUE}发现进程: $pids，正在终止...${NC}"
+      for pid in $pids; do
+        kill -TERM "$pid" 2>/dev/null || true
+        sleep 1
+        # 如果进程还在运行，强制终止
+        if ps -p "$pid" > /dev/null 2>&1; then
+          kill -KILL "$pid" 2>/dev/null || true
+        fi
+      done
+    fi
+    
+    # 等待进程完全终止
+    sleep 2
+    
+    # 现在安全地关闭窗口
     log "${BLUE}正在关闭 Nexus 节点终端窗口...${NC}"
     
-    # 查找并关闭包含 nexus 相关命令的终端窗口
-    local window_count=0
-    osascript -e 'tell application "Terminal" to set window_list to every window' 2>/dev/null
-    
-    # 尝试关闭包含 nexus 命令的窗口
+    # 只关闭包含 nexus 相关内容的窗口，不影响其他终端
     osascript -e 'tell application "Terminal" to close (every window whose name contains "nexus")' 2>/dev/null || log "${YELLOW}未找到包含 nexus 的窗口${NC}"
-    
-    # 等待窗口关闭
-    sleep 2
+    osascript -e 'tell application "Terminal" to close (every window whose name contains "nexus-network")' 2>/dev/null || true
+    osascript -e 'tell application "Terminal" to close (every window whose name contains "nexus-cli")' 2>/dev/null || true
     
     # 清理 screen 会话（如果存在）
     if screen -list | grep -q "nexus_node"; then
