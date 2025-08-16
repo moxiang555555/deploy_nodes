@@ -213,7 +213,24 @@ cleanup_exit() {
   log "${YELLOW}收到退出信号，正在清理 Nexus 节点进程...${NC}"
   
   if [[ "$OS_TYPE" == "macOS" ]]; then
-    # macOS: 先终止进程，最后关闭窗口
+    # macOS: 先获取窗口信息，再终止进程，最后关闭窗口
+    log "${BLUE}正在获取 Nexus 相关窗口信息...${NC}"
+    local window_names=()
+    local all_windows=$(osascript -e 'tell application "Terminal" to get name of every window' 2>/dev/null || echo "")
+    
+    if [[ -n "$all_windows" ]]; then
+      log "${BLUE}当前所有终端窗口: $all_windows${NC}"
+      
+      # 查找可能包含 Nexus 相关内容的窗口
+      while IFS= read -r window_name; do
+        if [[ "$window_name" =~ nexus ]] || [[ "$window_name" =~ "nexus-network" ]] || [[ "$window_name" =~ "nexus-cli" ]] || [[ "$window_name" =~ "$NODE_ID_TO_USE" ]]; then
+          window_names+=("$window_name")
+          log "${BLUE}发现相关窗口: $window_name${NC}"
+        fi
+      done <<< "$all_windows"
+    fi
+    
+    # 现在终止进程
     log "${BLUE}正在终止 Nexus 节点进程...${NC}"
     
     # 查找并终止 nexus-network 和 nexus-cli 进程
@@ -285,24 +302,9 @@ cleanup_exit() {
   if [[ "$OS_TYPE" == "macOS" ]]; then
     log "${BLUE}正在关闭 Nexus 节点终端窗口...${NC}"
     
-    # 智能窗口关闭：先找到所有可能的窗口名称
-    local window_names=()
-    
-    # 获取所有终端窗口名称
-    local all_windows=$(osascript -e 'tell application "Terminal" to get name of every window' 2>/dev/null || echo "")
-    
-    if [[ -n "$all_windows" ]]; then
-      log "${BLUE}当前所有终端窗口: $all_windows${NC}"
-      
-      # 查找可能包含 Nexus 相关内容的窗口
-      while IFS= read -r window_name; do
-        if [[ "$window_name" =~ nexus ]] || [[ "$window_name" =~ "nexus-network" ]] || [[ "$window_name" =~ "nexus-cli" ]] || [[ "$window_name" =~ "$NODE_ID_TO_USE" ]]; then
-          window_names+=("$window_name")
-          log "${BLUE}发现相关窗口: $window_name${NC}"
-        fi
-      done <<< "$all_windows"
-      
-      # 关闭找到的相关窗口
+    # 使用之前保存的窗口名称关闭窗口
+    if [[ ${#window_names[@]} -gt 0 ]]; then
+      log "${BLUE}正在关闭之前识别的 Nexus 相关窗口...${NC}"
       for window_name in "${window_names[@]}"; do
         log "${BLUE}正在关闭窗口: $window_name${NC}"
         osascript -e 'tell application "Terminal" to close (every window whose name is "'"$window_name"'")' 2>/dev/null || true
@@ -315,8 +317,7 @@ cleanup_exit() {
       local remaining_windows=$(osascript -e 'tell application "Terminal" to get name of every window' 2>/dev/null || echo "")
       log "${BLUE}关闭后剩余窗口: $remaining_windows${NC}"
     else
-      log "${YELLOW}无法获取终端窗口信息${NC}"
-      
+      log "${YELLOW}未找到 Nexus 相关窗口，使用备用方案...${NC}"
       # 备用方案：使用通用关键词关闭
       osascript -e 'tell application "Terminal" to close (every window whose name contains "nexus")' 2>/dev/null || true
       osascript -e 'tell application "Terminal" to close (every window whose name contains "nexus-network")' 2>/dev/null || true
@@ -338,7 +339,24 @@ cleanup_restart() {
   log "${YELLOW}准备重启节点，开始清理流程...${NC}"
   
   if [[ "$OS_TYPE" == "macOS" ]]; then
-    # macOS: 先终止进程，最后关闭窗口
+    # macOS: 先获取窗口信息，再终止进程，最后关闭窗口
+    log "${BLUE}正在获取 Nexus 相关窗口信息...${NC}"
+    local window_names=()
+    local all_windows=$(osascript -e 'tell application "Terminal" to get name of every window' 2>/dev/null || echo "")
+    
+    if [[ -n "$all_windows" ]]; then
+      log "${BLUE}当前所有终端窗口: $all_windows${NC}"
+      
+      # 查找可能包含 Nexus 相关内容的窗口
+      while IFS= read -r window_name; do
+        if [[ "$window_name" =~ nexus ]] || [[ "$window_name" =~ "nexus-network" ]] || [[ "$window_name" =~ "nexus-cli" ]] || [[ "$window_name" =~ "$NODE_ID_TO_USE" ]]; then
+          window_names+=("$window_name")
+          log "${BLUE}发现相关窗口: $window_name${NC}"
+        fi
+      done <<< "$all_windows"
+    fi
+    
+    # 现在终止进程
     log "${BLUE}正在终止 Nexus 节点进程...${NC}"
     
     # 查找并终止 nexus-network 和 nexus-cli 进程
@@ -410,24 +428,9 @@ cleanup_restart() {
   if [[ "$OS_TYPE" == "macOS" ]]; then
     log "${BLUE}正在关闭 Nexus 节点终端窗口...${NC}"
     
-    # 智能窗口关闭：先找到所有可能的窗口名称
-    local window_names=()
-    
-    # 获取所有终端窗口名称
-    local all_windows=$(osascript -e 'tell application "Terminal" to get name of every window' 2>/dev/null || echo "")
-    
-    if [[ -n "$all_windows" ]]; then
-      log "${BLUE}当前所有终端窗口: $all_windows${NC}"
-      
-      # 查找可能包含 Nexus 相关内容的窗口
-      while IFS= read -r window_name; do
-        if [[ "$window_name" =~ nexus ]] || [[ "$window_name" =~ "nexus-network" ]] || [[ "$window_name" =~ "nexus-cli" ]] || [[ "$window_name" =~ "$NODE_ID_TO_USE" ]]; then
-          window_names+=("$window_name")
-          log "${BLUE}发现相关窗口: $window_name${NC}"
-        fi
-      done <<< "$all_windows"
-      
-      # 关闭找到的相关窗口
+    # 使用之前保存的窗口名称关闭窗口
+    if [[ ${#window_names[@]} -gt 0 ]]; then
+      log "${BLUE}正在关闭之前识别的 Nexus 相关窗口...${NC}"
       for window_name in "${window_names[@]}"; do
         log "${BLUE}正在关闭窗口: $window_name${NC}"
         osascript -e 'tell application "Terminal" to close (every window whose name is "'"$window_name"'")' 2>/dev/null || true
@@ -440,8 +443,7 @@ cleanup_restart() {
       local remaining_windows=$(osascript -e 'tell application "Terminal" to get name of every window' 2>/dev/null || echo "")
       log "${BLUE}关闭后剩余窗口: $remaining_windows${NC}"
     else
-      log "${YELLOW}无法获取终端窗口信息${NC}"
-      
+      log "${YELLOW}未找到 Nexus 相关窗口，使用备用方案...${NC}"
       # 备用方案：使用通用关键词关闭
       osascript -e 'tell application "Terminal" to close (every window whose name contains "nexus")' 2>/dev/null || true
       osascript -e 'tell application "Terminal" to close (every window whose name contains "nexus-network")' 2>/dev/null || true
