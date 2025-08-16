@@ -319,7 +319,6 @@ cleanup_restart() {
         if ps -p "$pid" > /dev/null 2>&1; then
           kill -KILL "$pid" 2>/dev/null || true
         fi
-        fi
       done
     fi
     
