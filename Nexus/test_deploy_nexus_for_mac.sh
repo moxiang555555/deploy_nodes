@@ -213,7 +213,7 @@ cleanup_exit() {
   log "${YELLOW}收到退出信号，正在清理 Nexus 节点进程...${NC}"
   
   if [[ "$OS_TYPE" == "macOS" ]]; then
-    # macOS: 先终止进程，再关闭窗口
+    # macOS: 先终止进程，最后关闭窗口
     log "${BLUE}正在终止 Nexus 节点进程...${NC}"
     
     # 查找并终止 nexus-network 和 nexus-cli 进程
@@ -232,14 +232,6 @@ cleanup_exit() {
     
     # 等待进程完全终止
     sleep 2
-    
-    # 现在安全地关闭窗口
-    log "${BLUE}正在关闭 Nexus 节点终端窗口...${NC}"
-    
-    # 只关闭包含 nexus 相关内容的窗口，不影响其他终端
-    osascript -e 'tell application "Terminal" to close (every window whose name contains "nexus")' 2>/dev/null || log "${YELLOW}未找到包含 nexus 的窗口${NC}"
-    osascript -e 'tell application "Terminal" to close (every window whose name contains "nexus-network")' 2>/dev/null || true
-    osascript -e 'tell application "Terminal" to close (every window whose name contains "nexus-cli")' 2>/dev/null || true
     
     # 清理 screen 会话（如果存在）
     if screen -list | grep -q "nexus_node"; then
@@ -284,6 +276,19 @@ cleanup_exit() {
     for pid in $child_pids; do
       kill -9 "$pid" 2>/dev/null || true
     done
+  fi
+  
+  # 等待所有进程完全清理
+  sleep 3
+  
+  # 最后才关闭窗口（确保所有进程都已终止）
+  if [[ "$OS_TYPE" == "macOS" ]]; then
+    log "${BLUE}正在关闭 Nexus 节点终端窗口...${NC}"
+    
+    # 只关闭包含 nexus 相关内容的窗口，不影响其他终端
+    osascript -e 'tell application "Terminal" to close (every window whose name contains "nexus")' 2>/dev/null || log "${YELLOW}未找到包含 nexus 的窗口${NC}"
+    osascript -e 'tell application "Terminal" to close (every window whose name contains "nexus-network")' 2>/dev/null || true
+    osascript -e 'tell application "Terminal" to close (every window whose name contains "nexus-cli")' 2>/dev/null || true
   fi
   
   log "${GREEN}清理完成，脚本退出。${NC}"
@@ -300,7 +305,7 @@ cleanup_restart() {
   log "${YELLOW}准备重启节点，开始清理流程...${NC}"
   
   if [[ "$OS_TYPE" == "macOS" ]]; then
-    # macOS: 先终止进程，再关闭窗口
+    # macOS: 先终止进程，最后关闭窗口
     log "${BLUE}正在终止 Nexus 节点进程...${NC}"
     
     # 查找并终止 nexus-network 和 nexus-cli 进程
@@ -314,19 +319,12 @@ cleanup_restart() {
         if ps -p "$pid" > /dev/null 2>&1; then
           kill -KILL "$pid" 2>/dev/null || true
         fi
+        fi
       done
     fi
     
     # 等待进程完全终止
     sleep 2
-    
-    # 现在安全地关闭窗口
-    log "${BLUE}正在关闭 Nexus 节点终端窗口...${NC}"
-    
-    # 只关闭包含 nexus 相关内容的窗口，不影响其他终端
-    osascript -e 'tell application "Terminal" to close (every window whose name contains "nexus")' 2>/dev/null || log "${YELLOW}未找到包含 nexus 的窗口${NC}"
-    osascript -e 'tell application "Terminal" to close (every window whose name contains "nexus-network")' 2>/dev/null || true
-    osascript -e 'tell application "Terminal" to close (every window whose name contains "nexus-cli")' 2>/dev/null || true
     
     # 清理 screen 会话（如果存在）
     if screen -list | grep -q "nexus_node"; then
@@ -373,8 +371,18 @@ cleanup_restart() {
     done
   fi
   
-  # 等待进程完全清理
+  # 等待所有进程完全清理
   sleep 3
+  
+  # 最后才关闭窗口（确保所有进程都已终止）
+  if [[ "$OS_TYPE" == "macOS" ]]; then
+    log "${BLUE}正在关闭 Nexus 节点终端窗口...${NC}"
+    
+    # 只关闭包含 nexus 相关内容的窗口，不影响其他终端
+    osascript -e 'tell application "Terminal" to close (every window whose name contains "nexus")' 2>/dev/null || log "${YELLOW}未找到包含 nexus 的窗口${NC}"
+    osascript -e 'tell application "Terminal" to close (every window whose name contains "nexus-network")' 2>/dev/null || true
+    osascript -e 'tell application "Terminal" to close (every window whose name contains "nexus-cli")' 2>/dev/null || true
+  fi
   
   log "${GREEN}清理完成，准备重启节点。${NC}"
 }
