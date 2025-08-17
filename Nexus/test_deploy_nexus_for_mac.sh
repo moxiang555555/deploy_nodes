@@ -655,7 +655,10 @@ start_node() {
     log "${BLUE}在 macOS 中打开新终端窗口启动节点...${NC}"
     osascript -e 'tell application "Terminal"
       set newWindow to do script "cd ~ && echo \"🚀 正在启动 Nexus 节点...\" && nexus-network start --node-id '"$NODE_ID_TO_USE"' && echo \"✅ 节点已启动，按任意键关闭窗口...\" && read -n 1"
-      set bounds of front window to {100, 100, 1090, 800}
+      tell front window
+        set number of columns to 109
+        set number of rows to 32
+      end tell
     end tell'
     
     # 等待一下确保窗口打开
@@ -666,10 +669,13 @@ start_node() {
       log "${GREEN}Nexus 节点已在新终端窗口中启动${NC}"
     else
       log "${YELLOW}nexus-network 启动失败，尝试用 nexus-cli 启动...${NC}"
-      osascript -e 'tell application "Terminal"
-        set newWindow to do script "cd ~ && echo \"🚀 正在启动 Nexus 节点...\" && nexus-cli start --node-id '"$NODE_ID_TO_USE"' && echo \"✅ 节点已启动，按任意键关闭窗口...\" && read -n 1"
-        set bounds of front window to {100, 100, 1090, 800}
-      end tell'
+              osascript -e 'tell application "Terminal"
+          set newWindow to do script "cd ~ && echo \"🚀 正在启动 Nexus 节点...\" && nexus-cli start --node-id '"$NODE_ID_TO_USE"' && echo \"✅ 节点已启动，按任意键关闭窗口...\" && read -n 1"
+          tell front window
+            set number of columns to 109
+            set number of rows to 32
+          end tell
+        end tell'
       sleep 3
       
       if pgrep -f "nexus-cli start" > /dev/null; then
