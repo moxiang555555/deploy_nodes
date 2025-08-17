@@ -225,7 +225,6 @@ cleanup_exit() {
       
       # 获取所有窗口的详细信息（编号和名称）
       local window_info=$(osascript -e 'tell application "Terminal" to get {id, name} of every window' 2>/dev/null || echo "")
-      log "${BLUE}窗口详细信息: $window_info${NC}"
       
       # 获取当前终端的窗口ID（保护当前终端不被关闭）
       local current_window_id=$(osascript -e 'tell app "Terminal" to id of front window' 2>/dev/null || echo "")
@@ -246,8 +245,6 @@ cleanup_exit() {
         local window_name=$(osascript -e 'tell application "Terminal" to get name of window id '"$window_id" 2>/dev/null || echo "")
         
         if [[ -n "$window_name" ]]; then
-          log "${BLUE}窗口 $window_id 名称: $window_name${NC}"
-          
           # 检查窗口名称是否包含相关关键词
           if [[ "$window_name" =~ nexus ]] || \
              [[ "$window_name" =~ "nexus-network" ]] || \
@@ -256,9 +253,7 @@ cleanup_exit() {
             # 确保不关闭当前终端窗口
             if [[ "$window_id" != "$current_window_id" ]]; then
               window_ids+=("$window_id")
-              log "${BLUE}发现相关窗口: ID=$window_id, 名称=$window_name${NC}"
-            else
-              log "${BLUE}跳过当前终端窗口: ID=$window_id${NC}"
+              log "${BLUE}发现 Nexus 相关窗口: ID=$window_id${NC}"
             fi
           fi
         fi
@@ -347,7 +342,8 @@ cleanup_exit() {
         osascript -e "tell application \"Terminal\" to close window id $window_id saving no" 2>/dev/null || true
       done
       
-      sleep 2
+      sleep 10
+      log "${BLUE}窗口关闭完成，等待10秒后继续...${NC}"
       
       # 验证窗口是否已关闭
       local remaining_windows=$(osascript -e 'tell application "Terminal" to get name of every window' 2>/dev/null || echo "")
@@ -387,7 +383,6 @@ cleanup_restart() {
       
       # 获取所有窗口的详细信息（编号和名称）
       local window_info=$(osascript -e 'tell application "Terminal" to get {id, name} of every window' 2>/dev/null || echo "")
-      log "${BLUE}窗口详细信息: $window_info${NC}"
       
       # 获取当前终端的窗口ID（保护当前终端不被关闭）
       local current_window_id=$(osascript -e 'tell app "Terminal" to id of front window' 2>/dev/null || echo "")
@@ -509,7 +504,8 @@ cleanup_restart() {
         osascript -e "tell application \"Terminal\" to close window id $window_id saving no" 2>/dev/null || true
       done
       
-      sleep 2
+      sleep 10
+      log "${BLUE}窗口关闭完成，等待10秒后继续...${NC}"
       
       # 验证窗口是否已关闭
       local remaining_windows=$(osascript -e 'tell application "Terminal" to get name of every window' 2>/dev/null || echo "")
@@ -657,7 +653,10 @@ start_node() {
   if [[ "$OS_TYPE" == "macOS" ]]; then
     # macOS: 新开终端窗口启动节点
     log "${BLUE}在 macOS 中打开新终端窗口启动节点...${NC}"
-    osascript -e 'tell application "Terminal" to do script "cd ~ && echo \"🚀 正在启动 Nexus 节点...\" && nexus-network start --node-id '"$NODE_ID_TO_USE"' && echo \"✅ 节点已启动，按任意键关闭窗口...\" && read -n 1"'
+    osascript -e 'tell application "Terminal"
+      set newWindow to do script "cd ~ && echo \"🚀 正在启动 Nexus 节点...\" && nexus-network start --node-id '"$NODE_ID_TO_USE"' && echo \"✅ 节点已启动，按任意键关闭窗口...\" && read -n 1"
+      set bounds of front window to {100, 100, 1090, 800}
+    end tell'
     
     # 等待一下确保窗口打开
     sleep 3
@@ -667,7 +666,10 @@ start_node() {
       log "${GREEN}Nexus 节点已在新终端窗口中启动${NC}"
     else
       log "${YELLOW}nexus-network 启动失败，尝试用 nexus-cli 启动...${NC}"
-      osascript -e 'tell application "Terminal" to do script "cd ~ && echo \"🚀 正在启动 Nexus 节点...\" && nexus-cli start --node-id '"$NODE_ID_TO_USE"' && echo \"✅ 节点已启动，按任意键关闭窗口...\" && read -n 1"'
+      osascript -e 'tell application "Terminal"
+        set newWindow to do script "cd ~ && echo \"🚀 正在启动 Nexus 节点...\" && nexus-cli start --node-id '"$NODE_ID_TO_USE"' && echo \"✅ 节点已启动，按任意键关闭窗口...\" && read -n 1"
+        set bounds of front window to {100, 100, 1090, 800}
+      end tell'
       sleep 3
       
       if pgrep -f "nexus-cli start" > /dev/null; then
