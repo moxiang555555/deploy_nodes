@@ -248,7 +248,7 @@ if [[ "$OS_TYPE" == "macos" ]]; then
   PROJECT_DIR="/Users/$CURRENT_USER/rl-swarm"
   DESKTOP_DIR="/Users/$CURRENT_USER/Desktop"
   mkdir -p "$DESKTOP_DIR"
-  for script in gensyn.sh nexus.sh ritual.sh wai.sh startAll.sh; do
+  for script in gensyn.sh nexus.sh ritual.sh wai.sh startAll.sh quickq_run.sh; do
     cmd_name="${script%.sh}.command"
     cat > "$DESKTOP_DIR/$cmd_name" <<EOF
 #!/bin/bash
