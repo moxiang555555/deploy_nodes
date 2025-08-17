@@ -563,6 +563,21 @@ install_nexus_cli() {
     log "${RED}未找到 nexus-network 或 nexus-cli，无法运行节点。${NC}"
     exit 1
   fi
+  
+  # 首次安装后生成仓库hash，避免首次运行时等待
+  if [[ ! -f "$HOME/.nexus/last_commit" ]]; then
+    log "${BLUE}首次安装，正在生成仓库hash记录...${NC}"
+    local repo_url="https://github.com/nexus-xyz/nexus-cli.git"
+    local current_commit=$(git ls-remote --heads "$repo_url" main 2>/dev/null | cut -f1)
+    
+    if [[ -n "$current_commit" ]]; then
+      mkdir -p "$HOME/.nexus"
+      echo "$current_commit" > "$HOME/.nexus/last_commit"
+      log "${GREEN}已记录当前仓库版本: ${current_commit:0:8}${NC}"
+    else
+      log "${YELLOW}无法获取仓库信息，将在后续检测时创建${NC}"
+    fi
+  fi
 }
 
 # 读取或设置 Node ID，添加 5 秒超时
