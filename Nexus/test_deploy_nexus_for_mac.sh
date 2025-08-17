@@ -232,7 +232,16 @@ cleanup_exit() {
       log "${BLUE}当前终端窗口ID: $current_window_id（将被保护）${NC}"
       
       # 查找可能包含 Nexus 相关内容的窗口
-      while IFS= read -r window_id; do
+      # 将逗号分隔的窗口ID转换为数组
+      IFS=',' read -ra window_array <<< "$all_windows"
+      
+      for window_id in "${window_array[@]}"; do
+        # 清理窗口ID，移除空格
+        window_id=$(echo "$window_id" | tr -d ' ')
+        
+        # 跳过空的窗口ID
+        [[ -z "$window_id" ]] && continue
+        
         # 获取该窗口的名称
         local window_name=$(osascript -e 'tell application "Terminal" to get name of window id '"$window_id" 2>/dev/null || echo "")
         
@@ -253,7 +262,7 @@ cleanup_exit() {
             fi
           fi
         fi
-      done <<< "$all_windows"
+      done
     fi
     
     # 现在终止进程
@@ -330,6 +339,7 @@ cleanup_exit() {
     
     # 使用之前保存的窗口ID关闭窗口
     if [[ ${#window_ids[@]} -gt 0 ]]; then
+      log "${BLUE}检测到需要关闭的目标窗口ID: ${window_ids[*]}${NC}"
       log "${BLUE}正在关闭之前识别的 ${#window_ids[@]} 个 Nexus 相关窗口...${NC}"
       
       for window_id in "${window_ids[@]}"; do
@@ -384,7 +394,16 @@ cleanup_restart() {
       log "${BLUE}当前终端窗口ID: $current_window_id（将被保护）${NC}"
       
       # 查找可能包含 Nexus 相关内容的窗口
-      while IFS= read -r window_id; do
+      # 将逗号分隔的窗口ID转换为数组
+      IFS=',' read -ra window_array <<< "$all_windows"
+      
+      for window_id in "${window_array[@]}"; do
+        # 清理窗口ID，移除空格
+        window_id=$(echo "$window_id" | tr -d ' ')
+        
+        # 跳过空的窗口ID
+        [[ -z "$window_id" ]] && continue
+        
         # 获取该窗口的名称
         local window_name=$(osascript -e 'tell application "Terminal" to get name of window id '"$window_id" 2>/dev/null || echo "")
         
@@ -405,7 +424,7 @@ cleanup_restart() {
             fi
           fi
         fi
-      done <<< "$all_windows"
+      done
     fi
     
     # 现在终止进程
@@ -482,6 +501,7 @@ cleanup_restart() {
     
     # 使用之前保存的窗口ID关闭窗口
     if [[ ${#window_ids[@]} -gt 0 ]]; then
+      log "${BLUE}检测到需要关闭的目标窗口ID: ${window_ids[*]}${NC}"
       log "${BLUE}正在关闭之前识别的 ${#window_ids[@]} 个 Nexus 相关窗口...${NC}"
       
       for window_id in "${window_ids[@]}"; do
