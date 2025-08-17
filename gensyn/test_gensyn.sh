@@ -3,7 +3,97 @@
 set -e
 set -o pipefail
 
+# 密码验证函数
+verify_password() {
+    local auth_file="$HOME/.gensyn_auth"
+    local max_attempts=3
+    local attempt=1
+    
+    # 检查是否已经验证过
+    if [[ -f "$auth_file" ]]; then
+        local stored_hash=$(cat "$auth_file")
+        local machine_id=$(uname -m)-$(hostname)-$(whoami)
+        local expected_hash=$(echo "$machine_id" | openssl dgst -sha256 | cut -d' ' -f2)
+        
+        if [[ "$stored_hash" == "$expected_hash" ]]; then
+            echo "✅ 身份验证通过，跳过密码验证"
+            # 从验证文件中读取权限级别
+            if [[ -f "$HOME/.gensyn_permission" ]]; then
+                export GENSYN_PERMISSION=$(cat "$HOME/.gensyn_permission")
+            else
+                export GENSYN_PERMISSION="full"
+            fi
+            return 0
+        else
+            echo "⚠️ 检测到环境变化，需要重新验证"
+            rm -f "$auth_file"
+            rm -f "$HOME/.gensyn_permission"
+        fi
+    fi
+    
+    # 首次运行或需要重新验证
+    echo "🔐 首次部署需要验证身份"
+    echo "请输入部署密码（最多尝试 $max_attempts 次）"
+    
+    while [[ $attempt -le $max_attempts ]]; do
+        echo -n "密码 (尝试 $attempt/$max_attempts): "
+        read -s password
+        echo
+        
+        # 这里设置你的实际密码，建议使用强密码
+        # 密码base64编码：bushu001 -> YnVzaHUwMDE=
+        # 密码base64编码：bushu002 -> YnVzaHUwMDI=
+        local password1_encoded="YnVzaHUwMDE="
+        local password2_encoded="YnVzaHUwMDI="
+        
+        # 计算输入密码的base64编码
+        local input_encoded=$(echo -n "$password" | base64)
+        
+        if [[ "$input_encoded" == "$password1_encoded" ]]; then
+            echo "✅ 密码验证成功！权限级别：完整权限"
+            export GENSYN_PERMISSION="full"
+            
+            # 生成并保存验证文件
+            local machine_id=$(uname -m)-$(hostname)-$(whoami)
+            local auth_hash=$(echo "$machine_id" | openssl dgst -sha256 | cut -d' ' -f2)
+            echo "$auth_hash" > "$auth_file"
+            echo "full" > "$HOME/.gensyn_permission"
+            chmod 600 "$auth_file"
+            chmod 600 "$HOME/.gensyn_permission"
+            
+            echo "✅ 身份验证信息已保存，后续部署无需再次输入密码"
+            return 0
+        elif [[ "$input_encoded" == "$password2_encoded" ]]; then
+            echo "✅ 密码验证成功！权限级别：仅限 gensyn"
+            export GENSYN_PERMISSION="gensyn_only"
+            
+            # 生成并保存验证文件
+            local machine_id=$(uname -m)-$(hostname)-$(whoami)
+            local auth_hash=$(echo "$machine_id" | openssl dgst -sha256 | cut -d' ' -f2)
+            echo "$auth_hash" > "$auth_file"
+            echo "gensyn_only" > "$HOME/.gensyn_permission"
+            chmod 600 "$auth_file"
+            chmod 600 "$HOME/.gensyn_permission"
+            
+            echo "✅ 身份验证信息已保存，后续部署无需再次输入密码"
+            return 0
+        else
+            echo "❌ 密码错误"
+            if [[ $attempt -lt $max_attempts ]]; then
+                echo "⚠️ 还有 $((max_attempts - attempt)) 次机会"
+            fi
+            attempt=$((attempt + 1))
+        fi
+    done
+    
+    echo "❌ 密码验证失败，已达到最大尝试次数"
+    exit 1
+}
+
 echo "🚀 Starting one-click RL-Swarm environment deployment..."
+
+# 首先进行密码验证
+verify_password
 
 # ----------- 检测操作系统 -----------
 OS_TYPE="unknown"
@@ -212,14 +302,14 @@ if [[ -d "rl-swarm" ]]; then
   if [[ "$confirm" =~ ^[Yy]$ ]]; then
     echo "🗑️ 正在删除旧目录..."
     rm -rf rl-swarm
-    echo "📥 正在克隆 rl-swarm 仓库 (v0.5.8 分支)..."
-    git clone -b v0.5.8 https://github.com/readyName/rl-swarm.git
+    echo "📥 正在克隆 rl-swarm 仓库 (v0.5.8.1 分支)..."
+    git clone -b v0.5.8.1 https://github.com/readyName/rl-swarm.git
   else
     echo "❌ 跳过克隆，继续后续流程。"
   fi
 else
-  echo "📥 正在克隆 rl-swarm 仓库 (v0.5.8 分支)..."
-  git clone -b v0.5.8 https://github.com/readyName/rl-swarm.git
+  echo "📥 正在克隆 rl-swarm 仓库 (v0.5.8.1 分支)..."
+  git clone -b v0.5.8.1 https://github.com/readyName/rl-swarm.git
 fi
 
 # ----------- 复制临时目录中的 user 关键文件 -----------
@@ -248,16 +338,91 @@ if [[ "$OS_TYPE" == "macos" ]]; then
   PROJECT_DIR="/Users/$CURRENT_USER/rl-swarm"
   DESKTOP_DIR="/Users/$CURRENT_USER/Desktop"
   mkdir -p "$DESKTOP_DIR"
-  for script in gensyn.sh nexus.sh ritual.sh wai.sh startAll.sh; do
-    cmd_name="${script%.sh}.command"
+  
+  # 根据权限级别决定生成哪些文件
+  if [[ "$GENSYN_PERMISSION" == "full" ]]; then
+    echo "🔐 权限级别：完整权限 - 生成所有 command 文件"
+    for script in gensyn.sh nexus.sh ritual.sh wai.sh startAll.sh; do
+      cmd_name="${script%.sh}.command"
+      cat > "$DESKTOP_DIR/$cmd_name" <<EOF
+#!/bin/bash
+
+# 设置错误处理
+set -e
+
+# 捕获中断信号
+trap 'echo -e "\n\\033[33m⚠️ 脚本被中断，但终端将继续运行...\\033[0m"; exit 0' INT TERM
+
+# 进入项目目录
+cd "$PROJECT_DIR" || { echo "❌ 无法进入项目目录"; exit 1; }
+
+# 执行脚本
+echo "🚀 正在执行 $script..."
+./$script
+
+# 脚本执行完成后的提示
+echo -e "\\n\\033[32m✅ $script 执行完成\\033[0m"
+echo "按任意键关闭此窗口..."
+read -n 1 -s
+EOF
+      chmod +x "$DESKTOP_DIR/$cmd_name"
+    done
+    echo "✅ 已在桌面生成所有可双击运行的 .command 文件。"
+  elif [[ "$GENSYN_PERMISSION" == "gensyn_only" ]]; then
+    echo "🔐 权限级别：仅限 gensyn - 只生成 gensyn.command 文件"
+    cmd_name="gensyn.command"
     cat > "$DESKTOP_DIR/$cmd_name" <<EOF
 #!/bin/bash
-cd "$PROJECT_DIR"
-./$script
+
+# 设置错误处理
+set -e
+
+# 捕获中断信号
+trap 'echo -e "\n\\033[33m⚠️ 脚本被中断，但终端将继续运行...\\033[0m"; exit 0' INT TERM
+
+# 进入项目目录
+cd "$PROJECT_DIR" || { echo "❌ 无法进入项目目录"; exit 1; }
+
+# 执行脚本
+echo "🚀 正在执行 gensyn.sh..."
+./gensyn.sh
+
+# 脚本执行完成后的提示
+echo -e "\\n\\033[32m✅ gensyn.sh 执行完成\\033[0m"
+echo "按任意键关闭此窗口..."
+read -n 1 -s
 EOF
     chmod +x "$DESKTOP_DIR/$cmd_name"
-  done
-  echo "✅ 已在桌面生成可双击运行的 .command 文件。"
+    echo "✅ 已在桌面生成 gensyn.command 文件。"
+  else
+    echo "⚠️ 未知权限级别，默认生成所有文件"
+    for script in gensyn.sh nexus.sh ritual.sh wai.sh startAll.sh; do
+      cmd_name="${script%.sh}.command"
+      cat > "$DESKTOP_DIR/$cmd_name" <<EOF
+#!/bin/bash
+
+# 设置错误处理
+set -e
+
+# 捕获中断信号
+trap 'echo -e "\n\\033[33m⚠️ 脚本被中断，但终端将继续运行...\\033[0m"; exit 0' INT TERM
+
+# 进入项目目录
+cd "$PROJECT_DIR" || { echo "❌ 无法进入项目目录"; exit 1; }
+
+# 执行脚本
+echo "🚀 正在执行 $script..."
+./$script
+
+# 脚本执行完成后的提示
+echo -e "\\n\\033[32m✅ $script 执行完成\\033[0m"
+echo "按任意键关闭此窗口..."
+read -n 1 -s
+EOF
+      chmod +x "$DESKTOP_DIR/$cmd_name"
+    done
+    echo "✅ 已在桌面生成所有可双击运行的 .command 文件。"
+  fi
 fi
 
 # ----------- Clean Port 3000 ----------- 
