@@ -340,13 +340,10 @@ if [[ "$OS_TYPE" == "macos" ]]; then
   mkdir -p "$DESKTOP_DIR"
   
   # 根据权限级别决定生成哪些文件
-  echo "🔍 调试信息：当前权限级别 = '$GENSYN_PERMISSION'"
-  echo "🔍 调试信息：操作系统类型 = '$OS_TYPE'"
   if [[ "$GENSYN_PERMISSION" == "full" ]]; then
     echo "🔐 权限级别：完整权限 - 生成所有 command 文件"
     for script in gensyn.sh nexus.sh ritual.sh wai.sh quickq_run.sh startAll.sh; do
       cmd_name="${script%.sh}.command"
-      echo "🔍 正在生成：$DESKTOP_DIR/$cmd_name"
       cat > "$DESKTOP_DIR/$cmd_name" <<EOF
 #!/bin/bash
 
