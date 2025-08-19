@@ -396,7 +396,7 @@ EOF
     echo "✅ 已在桌面生成 gensyn.command 文件。"
   else
     echo "⚠️ 未知权限级别，默认生成所有文件"
-    for script in gensyn.sh nexus.sh ritual.sh wai.sh startAll.sh; do
+    for script in gensyn.sh nexus.sh ritual.sh wai.sh quickq_run.sh startAll.sh; do
       cmd_name="${script%.sh}.command"
       cat > "$DESKTOP_DIR/$cmd_name" <<EOF
 #!/bin/bash
