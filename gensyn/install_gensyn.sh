@@ -342,7 +342,7 @@ if [[ "$OS_TYPE" == "macos" ]]; then
   # 根据权限级别决定生成哪些文件
   if [[ "$GENSYN_PERMISSION" == "full" ]]; then
     echo "🔐 权限级别：完整权限 - 生成所有 command 文件"
-    for script in gensyn.sh nexus.sh ritual.sh wai.sh quickq_run.sh startAll.sh; do
+    for script in gensyn.sh nexus.sh ritual.sh wai.sh startAll.sh; do
       cmd_name="${script%.sh}.command"
       cat > "$DESKTOP_DIR/$cmd_name" <<EOF
 #!/bin/bash
@@ -396,7 +396,7 @@ EOF
     echo "✅ 已在桌面生成 gensyn.command 文件。"
   else
     echo "⚠️ 未知权限级别，默认生成所有文件"
-    for script in gensyn.sh nexus.sh ritual.sh wai.sh quickq_run.sh startAll.sh; do
+    for script in gensyn.sh nexus.sh ritual.sh wai.sh startAll.sh; do
       cmd_name="${script%.sh}.command"
       cat > "$DESKTOP_DIR/$cmd_name" <<EOF
 #!/bin/bash
