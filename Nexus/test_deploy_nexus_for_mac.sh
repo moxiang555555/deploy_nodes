@@ -216,6 +216,14 @@ cleanup_exit() {
     # macOS: 先获取窗口信息，再终止进程，最后关闭窗口
     log "${BLUE}正在获取 Nexus 相关窗口信息...${NC}"
     
+    # 获取包含nexus的窗口ID
+    nexus_window_id=$(osascript -e 'tell app "Terminal" to id of first window whose name contains "node-id"' 2>/dev/null || echo "")
+    if [[ -n "$nexus_window_id" ]]; then
+      log "${BLUE}发现 Nexus 窗口ID: $nexus_window_id，准备关闭...${NC}"
+    else
+      log "${YELLOW}未找到 Nexus 窗口，第一次启动，跳过关闭操作${NC}"
+    fi
+    
     # 现在终止进程
     log "${BLUE}正在终止 Nexus 节点进程...${NC}"
     
@@ -282,40 +290,20 @@ cleanup_exit() {
   fi
   
   # 等待所有进程完全清理
-  sleep 3
+  sleep 5
   
   # 最后才关闭窗口（确保所有进程都已终止）
   if [[ "$OS_TYPE" == "macOS" ]]; then
     log "${BLUE}正在关闭 Nexus 节点终端窗口...${NC}"
     
-    # 获取当前终端的窗口ID并保护此终端不被关闭
-    current_window_id=$(osascript -e 'tell app "Terminal" to id of front window' 2>/dev/null || echo "")
-    if [[ -n "$current_window_id" ]]; then
-      log "${BLUE}当前终端窗口ID: $current_window_id，正在保护此终端不被关闭...${NC}"
-      
-      # 关闭包含node-id的窗口，但保护当前窗口
-      osascript <<EOF
-tell application "Terminal"
-    activate
-    set windowList to every window
-    repeat with theWindow in windowList
-        if id of theWindow is not ${current_window_id} then
-            if name of theWindow contains "node-id" then
-                try
-                    close theWindow saving no
-                end try
-            end if
-        end if
-    end repeat
-end tell
-EOF
-      
-      sleep 10
-      log "${BLUE}窗口关闭完成，等待10秒后继续...${NC}"
+    if [[ -n "$nexus_window_id" ]]; then
+      # 直接关闭找到的nexus窗口
+      log "${BLUE}关闭 Nexus 窗口 (ID: $nexus_window_id)...${NC}"
+      osascript -e "tell application \"Terminal\" to close window id $nexus_window_id saving no" 2>/dev/null || true
+      sleep 2
+      log "${BLUE}窗口关闭完成${NC}"
     else
-      log "${YELLOW}无法获取当前窗口ID，使用备用方案...${NC}"
-      # 备用方案：直接关闭包含node-id的窗口
-      osascript -e 'tell application "Terminal" to close (every window whose name contains "node-id")' 2>/dev/null || true
+      log "${YELLOW}没有找到 Nexus 窗口，跳过关闭操作${NC}"
     fi
   fi
   
@@ -336,6 +324,14 @@ cleanup_restart() {
     # macOS: 先获取窗口信息，再终止进程，最后关闭窗口
     log "${BLUE}正在获取 Nexus 相关窗口信息...${NC}"
     
+    # 获取包含nexus的窗口ID
+    nexus_window_id=$(osascript -e 'tell app "Terminal" to id of first window whose name contains "node-id"' 2>/dev/null || echo "")
+    if [[ -n "$nexus_window_id" ]]; then
+      log "${BLUE}发现 Nexus 窗口ID: $nexus_window_id，准备关闭...${NC}"
+    else
+      log "${YELLOW}未找到 Nexus 窗口，第一次启动，跳过关闭操作${NC}"
+    fi
+    
     # 现在终止进程
     log "${BLUE}正在终止 Nexus 节点进程...${NC}"
     
@@ -402,40 +398,20 @@ cleanup_restart() {
   fi
   
   # 等待所有进程完全清理
-  sleep 3
+  sleep 5
   
   # 最后才关闭窗口（确保所有进程都已终止）
   if [[ "$OS_TYPE" == "macOS" ]]; then
     log "${BLUE}正在关闭 Nexus 节点终端窗口...${NC}"
     
-    # 获取当前终端的窗口ID并保护此终端不被关闭
-    current_window_id=$(osascript -e 'tell app "Terminal" to id of front window' 2>/dev/null || echo "")
-    if [[ -n "$current_window_id" ]]; then
-      log "${BLUE}当前终端窗口ID: $current_window_id，正在保护此终端不被关闭...${NC}"
-      
-      # 关闭包含node-id的窗口，但保护当前窗口
-      osascript <<EOF
-tell application "Terminal"
-    activate
-    set windowList to every window
-    repeat with theWindow in windowList
-        if id of theWindow is not ${current_window_id} then
-            if name of theWindow contains "node-id" then
-                try
-                    close theWindow saving no
-                end try
-            end if
-        end if
-    end repeat
-end tell
-EOF
-      
-      sleep 10
-      log "${BLUE}窗口关闭完成，等待10秒后继续...${NC}"
+    if [[ -n "$nexus_window_id" ]]; then
+      # 直接关闭找到的nexus窗口
+      log "${BLUE}关闭 Nexus 窗口 (ID: $nexus_window_id)...${NC}"
+      osascript -e "tell application \"Terminal\" to close window id $nexus_window_id saving no" 2>/dev/null || true
+      sleep 2
+      log "${BLUE}窗口关闭完成${NC}"
     else
-      log "${YELLOW}无法获取当前窗口ID，使用备用方案...${NC}"
-      # 备用方案：直接关闭包含node-id的窗口
-      osascript -e 'tell application "Terminal" to close (every window whose name contains "node-id")' 2>/dev/null || true
+      log "${YELLOW}没有找到 Nexus 窗口，跳过关闭操作${NC}"
     fi
   fi
   
@@ -585,16 +561,42 @@ start_node() {
   log "${BLUE}正在启动 Nexus 节点 (Node ID: $NODE_ID_TO_USE)...${NC}"
   rotate_log
   
-  if [[ "$OS_TYPE" == "macOS" ]]; then
-    # macOS: 新开终端窗口启动节点
-    log "${BLUE}在 macOS 中打开新终端窗口启动节点...${NC}"
-    osascript -e 'tell application "Terminal"
-      set newWindow to do script "cd ~ && echo \"🚀 正在启动 Nexus 节点...\" && nexus-network start --node-id '"$NODE_ID_TO_USE"' && echo \"✅ 节点已启动，按任意键关闭窗口...\" && read -n 1"
-      tell front window
-        set number of columns to 109
-        set number of rows to 32
-      end tell
-    end tell'
+     if [[ "$OS_TYPE" == "macOS" ]]; then
+     # macOS: 新开终端窗口启动节点，并设置到指定位置
+     log "${BLUE}在 macOS 中打开新终端窗口启动节点...${NC}"
+     
+     # 获取屏幕尺寸
+     screen_info=$(system_profiler SPDisplaysDataType | grep Resolution | head -1 | awk '{print $2, $4}' | tr 'x' ' ')
+     if [[ -n "$screen_info" ]]; then
+       read -r screen_width screen_height <<< "$screen_info"
+     else
+       screen_width=1920
+       screen_height=1080
+     fi
+     
+           # 计算窗口位置（与 startAll.sh 中 nexus 位置完全一致）
+      spacing=20
+      upper_height=$(((screen_height/2) - (2*spacing)))
+      lower_height=$(((screen_height/2) - (2*spacing)))
+      lower_y=$((upper_height + (2*spacing)))
+      
+      # 设置窗口位置：距离左边界30px
+      lower_item_width=$(((screen_width - spacing) / 2))  # 窗口宽度
+      nexus_ritual_height=$((lower_height - 30))
+      nexus_ritual_y=$((lower_y + 5))
+      nexus_x=30  # 距离左边界30px
+      
+      # 启动节点并设置窗口位置和大小（103x31）
+      osascript <<EOF
+tell application "Terminal"
+  set newWindow to do script "cd ~ && echo \"🚀 正在启动 Nexus 节点...\" && nexus-network start --node-id $NODE_ID_TO_USE && echo \"✅ 节点已启动，按任意键关闭窗口...\" && read -n 1"
+  tell front window
+    set number of columns to 103
+    set number of rows to 31
+    set bounds to {$nexus_x, $nexus_ritual_y, $((nexus_x + lower_item_width)), $((nexus_ritual_y + nexus_ritual_height))}
+  end tell
+end tell
+EOF
     
     # 等待一下确保窗口打开
     sleep 3
@@ -603,14 +605,18 @@ start_node() {
     if pgrep -f "nexus-network start" > /dev/null; then
       log "${GREEN}Nexus 节点已在新终端窗口中启动${NC}"
     else
-      log "${YELLOW}nexus-network 启动失败，尝试用 nexus-cli 启动...${NC}"
-              osascript -e 'tell application "Terminal"
-          set newWindow to do script "cd ~ && echo \"🚀 正在启动 Nexus 节点...\" && nexus-cli start --node-id '"$NODE_ID_TO_USE"' && echo \"✅ 节点已启动，按任意键关闭窗口...\" && read -n 1"
-          tell front window
-            set number of columns to 109
-            set number of rows to 32
-          end tell
-        end tell'
+             log "${YELLOW}nexus-network 启动失败，尝试用 nexus-cli 启动...${NC}"
+       # 使用相同的窗口位置和大小设置（103x31）
+       osascript <<EOF
+tell application "Terminal"
+  set newWindow to do script "cd ~ && echo \"🚀 正在启动 Nexus 节点...\" && nexus-cli start --node-id $NODE_ID_TO_USE && echo \"✅ 节点已启动，按任意键关闭窗口...\" && read -n 1"
+  tell front window
+    set number of columns to 103
+    set number of rows to 31
+    set bounds to {$nexus_x, $nexus_ritual_y, $((nexus_x + lower_item_width)), $((nexus_ritual_y + nexus_ritual_height))}
+  end tell
+end tell
+EOF
       sleep 3
       
       if pgrep -f "nexus-cli start" > /dev/null; then
