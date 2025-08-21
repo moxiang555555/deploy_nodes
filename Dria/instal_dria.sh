@@ -67,7 +67,11 @@ echo "   dkn-compute-launcher referrals"
 echo ""
 echo "然后选择：Get referral code to refer someone"
 echo ""
-echo "📝 获取邀请码后，请回到这里按回车键继续..."
+echo "请在新的终端窗口中运行以下命令更改端口："
+echo ""
+echo "   dkn-compute-launcher settings"
+echo ""
+echo "📝 全部设置完成后，请回到这里按回车键继续..."
 read -p "按回车键继续..."
 
 # 生成桌面启动文件
@@ -107,6 +111,6 @@ EOF
 chmod +x ~/Desktop/dria_start.command
 echo "✅ 桌面启动文件已创建: ~/Desktop/dria_start.command"
 
-echo ""
+echo "✅ 安装和配置完成！"
 echo "🚀 正在启动 Dria 节点..."
 dkn-compute-launcher start
