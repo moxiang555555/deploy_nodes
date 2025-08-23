@@ -126,7 +126,7 @@ install_dependencies() {
     print_header "安装基础依赖工具"
     echo -e "${BLUE}更新 apt 包索引并安装必要工具...${NC}"
     sudo apt-get update -y
-    sudo apt-get install -y curl jq screen build-essential || {
+    sudo apt-get install -y curl jq screen build-essential gnome-terminal || {
       echo -e "${RED}安装依赖工具失败，请检查网络连接或权限。${NC}"
       exit 1
     }
@@ -216,14 +216,6 @@ cleanup_exit() {
     # macOS: 先获取窗口信息，再终止进程，最后关闭窗口
     log "${BLUE}正在获取 Nexus 相关窗口信息...${NC}"
     
-    # 获取包含nexus的窗口ID
-    nexus_window_id=$(osascript -e 'tell app "Terminal" to id of first window whose name contains "node-id"' 2>/dev/null || echo "")
-    if [[ -n "$nexus_window_id" ]]; then
-      log "${BLUE}发现 Nexus 窗口ID: $nexus_window_id，准备关闭...${NC}"
-    else
-      log "${YELLOW}未找到 Nexus 窗口，第一次启动，跳过关闭操作${NC}"
-    fi
-    
     # 现在终止进程
     log "${BLUE}正在终止 Nexus 节点进程...${NC}"
     
@@ -250,7 +242,21 @@ cleanup_exit() {
       screen -S nexus_node -X quit 2>/dev/null || log "${RED}无法终止 screen 会话，请检查权限或会话状态。${NC}"
     fi
   else
-    # 非 macOS: 清理 screen 会话
+    # 非 macOS: 清理终端窗口和进程
+    log "${BLUE}正在终止 Nexus 节点终端窗口...${NC}"
+    # 关闭所有包含 "nexus-node-log" 标题的终端窗口
+    pids=$(xdotool search --name "nexus-node-log" getwindowpid %@ 2>/dev/null | sort -u)
+    if [[ -n "$pids" ]]; then
+      for pid in $pids; do
+        kill -TERM "$pid" 2>/dev/null || true
+        sleep 1
+        if ps -p "$pid" > /dev/null 2>&1; then
+          kill -KILL "$pid" 2>/dev/null || true
+        fi
+      done
+    fi
+
+    # 清理 screen 会话（如果存在）
     if screen -list | grep -q "nexus_node"; then
       log "${BLUE}正在终止 nexus_node screen 会话...${NC}"
       screen -S nexus_node -X quit 2>/dev/null || log "${RED}无法终止 screen 会话，请检查权限或会话状态。${NC}"
@@ -290,20 +296,40 @@ cleanup_exit() {
   fi
   
   # 等待所有进程完全清理
-  sleep 5
+  sleep 3
   
   # 最后才关闭窗口（确保所有进程都已终止）
   if [[ "$OS_TYPE" == "macOS" ]]; then
     log "${BLUE}正在关闭 Nexus 节点终端窗口...${NC}"
     
-    if [[ -n "$nexus_window_id" ]]; then
-      # 直接关闭找到的nexus窗口
-      log "${BLUE}关闭 Nexus 窗口 (ID: $nexus_window_id)...${NC}"
-      osascript -e "tell application \"Terminal\" to close window id $nexus_window_id saving no" 2>/dev/null || true
-      sleep 2
-      log "${BLUE}窗口关闭完成${NC}"
+    # 获取当前终端的窗口ID并保护此终端不被关闭
+    current_window_id=$(osascript -e 'tell app "Terminal" to id of front window' 2>/dev/null || echo "")
+    if [[ -n "$current_window_id" ]]; then
+      log "${BLUE}当前终端窗口ID: $current_window_id，正在保护此终端不被关闭...${NC}"
+      
+      # 关闭包含node-id的窗口，但保护当前窗口
+      osascript <<EOF
+tell application "Terminal"
+    activate
+    set windowList to every window
+    repeat with theWindow in windowList
+        if id of theWindow is not ${current_window_id} then
+            if name of theWindow contains "node-id" then
+                try
+                    close theWindow saving no
+                end try
+            end if
+        end if
+    end repeat
+end tell
+EOF
+      
+      sleep 10
+      log "${BLUE}窗口关闭完成，等待10秒后继续...${NC}"
     else
-      log "${YELLOW}没有找到 Nexus 窗口，跳过关闭操作${NC}"
+      log "${YELLOW}无法获取当前窗口ID，使用备用方案...${NC}"
+      # 备用方案：直接关闭包含node-id的窗口
+      osascript -e 'tell application "Terminal" to close (every window whose name contains "node-id")' 2>/dev/null || true
     fi
   fi
   
@@ -324,14 +350,6 @@ cleanup_restart() {
     # macOS: 先获取窗口信息，再终止进程，最后关闭窗口
     log "${BLUE}正在获取 Nexus 相关窗口信息...${NC}"
     
-    # 获取包含nexus的窗口ID
-    nexus_window_id=$(osascript -e 'tell app "Terminal" to id of first window whose name contains "node-id"' 2>/dev/null || echo "")
-    if [[ -n "$nexus_window_id" ]]; then
-      log "${BLUE}发现 Nexus 窗口ID: $nexus_window_id，准备关闭...${NC}"
-    else
-      log "${YELLOW}未找到 Nexus 窗口，第一次启动，跳过关闭操作${NC}"
-    fi
-    
     # 现在终止进程
     log "${BLUE}正在终止 Nexus 节点进程...${NC}"
     
@@ -358,7 +376,21 @@ cleanup_restart() {
       screen -S nexus_node -X quit 2>/dev/null || log "${RED}无法终止 screen 会话，请检查权限或会话状态。${NC}"
     fi
   else
-    # 非 macOS: 清理 screen 会话
+    # 非 macOS: 清理终端窗口和进程
+    log "${BLUE}正在终止 Nexus 节点终端窗口...${NC}"
+    # 关闭所有包含 "nexus-node-log" 标题的终端窗口
+    pids=$(xdotool search --name "nexus-node-log" getwindowpid %@ 2>/dev/null | sort -u)
+    if [[ -n "$pids" ]]; then
+      for pid in $pids; do
+        kill -TERM "$pid" 2>/dev/null || true
+        sleep 1
+        if ps -p "$pid" > /dev/null 2>&1; then
+          kill -KILL "$pid" 2>/dev/null || true
+        fi
+      done
+    fi
+
+    # 清理 screen 会话（如果存在）
     if screen -list | grep -q "nexus_node"; then
       log "${BLUE}正在终止 nexus_node screen 会话...${NC}"
       screen -S nexus_node -X quit 2>/dev/null || log "${RED}无法终止 screen 会话，请检查权限或会话状态。${NC}"
@@ -398,20 +430,40 @@ cleanup_restart() {
   fi
   
   # 等待所有进程完全清理
-  sleep 5
+  sleep 3
   
   # 最后才关闭窗口（确保所有进程都已终止）
   if [[ "$OS_TYPE" == "macOS" ]]; then
     log "${BLUE}正在关闭 Nexus 节点终端窗口...${NC}"
     
-    if [[ -n "$nexus_window_id" ]]; then
-      # 直接关闭找到的nexus窗口
-      log "${BLUE}关闭 Nexus 窗口 (ID: $nexus_window_id)...${NC}"
-      osascript -e "tell application \"Terminal\" to close window id $nexus_window_id saving no" 2>/dev/null || true
-      sleep 2
-      log "${BLUE}窗口关闭完成${NC}"
+    # 获取当前终端的窗口ID并保护此终端不被关闭
+    current_window_id=$(osascript -e 'tell app "Terminal" to id of front window' 2>/dev/null || echo "")
+    if [[ -n "$current_window_id" ]]; then
+      log "${BLUE}当前终端窗口ID: $current_window_id，正在保护此终端不被关闭...${NC}"
+      
+      # 关闭包含node-id的窗口，但保护当前窗口
+      osascript <<EOF
+tell application "Terminal"
+    activate
+    set windowList to every window
+    repeat with theWindow in windowList
+        if id of theWindow is not ${current_window_id} then
+            if name of theWindow contains "node-id" then
+                try
+                    close theWindow saving no
+                end try
+            end if
+        end if
+    end repeat
+end tell
+EOF
+      
+      sleep 10
+      log "${BLUE}窗口关闭完成，等待10秒后继续...${NC}"
     else
-      log "${YELLOW}没有找到 Nexus 窗口，跳过关闭操作${NC}"
+      log "${YELLOW}无法获取当前窗口ID，使用备用方案...${NC}"
+      # 备用方案：直接关闭包含node-id的窗口
+      osascript -e 'tell application "Terminal" to close (every window whose name contains "node-id")' 2>/dev/null || true
     fi
   fi
   
@@ -451,33 +503,13 @@ install_nexus_cli() {
   if [[ "$success" == false ]]; then
     log "${RED}Nexus CLI 安装/更新失败 $max_attempts 次，将尝试使用当前版本运行节点。${NC}"
   fi
-  
-  # 等待一下确保安装完成
-  sleep 3
-  
-  # 验证安装结果
   if command -v nexus-network &>/dev/null; then
     log "${GREEN}nexus-network 版本：$(nexus-network --version 2>/dev/null)${NC}"
   elif command -v nexus-cli &>/dev/null; then
     log "${GREEN}nexus-cli 版本：$(nexus-cli --version 2>/dev/null)${NC}"
   else
     log "${RED}未找到 nexus-network 或 nexus-cli，无法运行节点。${NC}"
-    log "${YELLOW}尝试重新安装...${NC}"
-    # 再次尝试安装
-    if curl -s https://cli.nexus.xyz/ | sh; then
-      log "${GREEN}重新安装成功！${NC}"
-      sleep 2
-      # 重新验证
-      if command -v nexus-network &>/dev/null || command -v nexus-cli &>/dev/null; then
-        log "${GREEN}验证通过，可以继续运行节点${NC}"
-      else
-        log "${RED}重新安装后仍然无法找到命令，退出脚本${NC}"
-        exit 1
-      fi
-    else
-      log "${RED}重新安装失败，退出脚本${NC}"
-      exit 1
-    fi
+    exit 1
   fi
   
   # 首次安装后生成仓库hash，避免首次运行时等待
@@ -581,33 +613,36 @@ start_node() {
   log "${BLUE}正在启动 Nexus 节点 (Node ID: $NODE_ID_TO_USE)...${NC}"
   rotate_log
   
-     if [[ "$OS_TYPE" == "macOS" ]]; then
-     # macOS: 新开终端窗口启动节点，并设置到指定位置
-     log "${BLUE}在 macOS 中打开新终端窗口启动节点...${NC}"
-     
-     # 获取屏幕尺寸
-     screen_info=$(system_profiler SPDisplaysDataType | grep Resolution | head -1 | awk '{print $2, $4}' | tr 'x' ' ')
-     if [[ -n "$screen_info" ]]; then
-       read -r screen_width screen_height <<< "$screen_info"
-     else
-       screen_width=1920
-       screen_height=1080
-     fi
-     
-           # 计算窗口位置（与 startAll.sh 中 nexus 位置完全一致）
-      spacing=20
-      upper_height=$(((screen_height/2) - (2*spacing)))
-      lower_height=$(((screen_height/2) - (2*spacing)))
-      lower_y=$((upper_height + (2*spacing)))
-      
-      # 设置窗口位置：距离左边界30px
-      lower_item_width=$(((screen_width - spacing) / 2))  # 窗口宽度
-      nexus_ritual_height=$((lower_height - 30))
-      nexus_ritual_y=$((lower_y + 5))
-      nexus_x=30  # 距离左边界30px
-      
-      # 启动节点并设置窗口位置和大小（103x31）
-      osascript <<EOF
+  if [[ "$OS_TYPE" == "macOS" ]]; then
+    # macOS: 新开终端窗口启动节点，并设置到指定位置
+    log "${BLUE}在 macOS 中打开新终端窗口启动节点...${NC}"
+    
+    # 获取屏幕尺寸
+    screen_info=$(system_profiler SPDisplaysDataType | grep Resolution | head -1 | awk '{print $2, $4}' | tr 'x' ' ')
+    if [[ -n "$screen_info" ]]; then
+      read -r screen_width screen_height <<< "$screen_info"
+    else
+      screen_width=1920
+      screen_height=1080
+    fi
+    
+    # 计算窗口位置（与 startAll.sh 中 nexus 位置完全一致）
+    spacing=20
+    upper_height=$(((screen_height/2) - (2*spacing)))
+    lower_height=$(((screen_height/2) - (2*spacing)))
+    lower_y=$((upper_height + (2*spacing)))
+    
+    # 计算 nexus 在 startAll.sh 中的确切位置
+    item_width=$(((screen_width - (2*spacing)) / 3))
+    quickq_width=$((item_width * 2 / 3))
+    lower_remaining_width=$((screen_width - quickq_width - (2*spacing)))
+    lower_item_width=$((lower_remaining_width / 2))
+    nexus_ritual_height=$((lower_height - 30))
+    nexus_ritual_y=$((lower_y + 5))
+    nexus_x=$((quickq_width + spacing))  # startAll.sh 中 nexus 的 X 坐标
+    
+    # 启动节点并设置窗口位置和大小（103x31）
+    osascript <<EOF
 tell application "Terminal"
   set newWindow to do script "cd ~ && echo \"🚀 正在启动 Nexus 节点...\" && nexus-network start --node-id $NODE_ID_TO_USE && echo \"✅ 节点已启动，按任意键关闭窗口...\" && read -n 1"
   tell front window
@@ -625,9 +660,9 @@ EOF
     if pgrep -f "nexus-network start" > /dev/null; then
       log "${GREEN}Nexus 节点已在新终端窗口中启动${NC}"
     else
-             log "${YELLOW}nexus-network 启动失败，尝试用 nexus-cli 启动...${NC}"
-       # 使用相同的窗口位置和大小设置（103x31）
-       osascript <<EOF
+      log "${YELLOW}nexus-network 启动失败，尝试用 nexus-cli 启动...${NC}"
+      # 使用相同的窗口位置和大小设置（103x31）
+      osascript <<EOF
 tell application "Terminal"
   set newWindow to do script "cd ~ && echo \"🚀 正在启动 Nexus 节点...\" && nexus-cli start --node-id $NODE_ID_TO_USE && echo \"✅ 节点已启动，按任意键关闭窗口...\" && read -n 1"
   tell front window
@@ -647,18 +682,52 @@ EOF
       fi
     fi
   else
-    # 非 macOS: 使用 screen 启动（保持原有逻辑）
-    log "${BLUE}在 $OS_TYPE 中使用 screen 启动节点...${NC}"
-    screen -dmS nexus_node bash -c "nexus-network start --node-id '${NODE_ID_TO_USE}' >> $LOG_FILE 2>&1"
-    sleep 2
-    if screen -list | grep -q "nexus_node"; then
-      log "${GREEN}Nexus 节点已在 screen 会话（nexus_node）中启动，日志输出到 $LOG_FILE${NC}"
+    # Ubuntu: 使用 gnome-terminal 打开新窗口显示日志
+    log "${BLUE}在 Ubuntu 中打开新终端窗口显示节点日志...${NC}"
+    
+    # 获取屏幕分辨率（用于设置窗口位置）
+    screen_res=$(xrandr | grep '*' | awk '{print $1}')
+    if [[ -n "$screen_res" ]]; then
+      screen_width=$(echo "$screen_res" | cut -d'x' -f1)
+      screen_height=$(echo "$screen_res" | cut -d'x' -f2)
+    else
+      screen_width=1920
+      screen_height=1080
+    fi
+    
+    # 计算窗口位置（右侧中间）
+    window_width=1000
+    window_height=600
+    window_x=$((screen_width - window_width - 50))  # 右侧留50px边距
+    window_y=$(((screen_height - window_height) / 2))  # 垂直居中
+    
+    # 打开新终端窗口，设置标题和位置，启动节点并显示日志
+    gnome-terminal --title="nexus-node-log" --geometry=${window_width}x${window_height}+${window_x}+${window_y} \
+      -- bash -c "cd ~ && \
+      echo \"🚀 正在启动 Nexus 节点 (Node ID: $NODE_ID_TO_USE)...\" && \
+      echo \"📝 实时日志输出 (按 Ctrl+C 停止节点):\" && \
+      nexus-network start --node-id $NODE_ID_TO_USE 2>&1 | tee -a $LOG_FILE; \
+      echo \"❌ 节点已停止，按任意键关闭窗口...\" && read -n 1"
+    
+    # 等待窗口启动
+    sleep 3
+    
+    # 检查节点是否启动成功
+    if pgrep -f "nexus-network start" > /dev/null; then
+      log "${GREEN}Nexus 节点已在新终端窗口中启动，标题为 'nexus-node-log'${NC}"
     else
       log "${YELLOW}nexus-network 启动失败，尝试用 nexus-cli 启动...${NC}"
-      screen -dmS nexus_node bash -c "nexus-cli start --node-id '${NODE_ID_TO_USE}' >> $LOG_FILE 2>&1"
-      sleep 2
-      if screen -list | grep -q "nexus_node"; then
-        log "${GREEN}Nexus 节点已通过 nexus-cli 启动，日志输出到 $LOG_FILE${NC}"
+      # 备用方案：用 nexus-cli 启动
+      gnome-terminal --title="nexus-node-log" --geometry=${window_width}x${window_height}+${window_x}+${window_y} \
+        -- bash -c "cd ~ && \
+        echo \"🚀 正在启动 Nexus 节点 (Node ID: $NODE_ID_TO_USE)...\" && \
+        echo \"📝 实时日志输出 (按 Ctrl+C 停止节点):\" && \
+        nexus-cli start --node-id $NODE_ID_TO_USE 2>&1 | tee -a $LOG_FILE; \
+        echo \"❌ 节点已停止，按任意键关闭窗口...\" && read -n 1"
+      
+      sleep 3
+      if pgrep -f "nexus-cli start" > /dev/null; then
+        log "${GREEN}Nexus 节点已通过 nexus-cli 在新终端窗口中启动${NC}"
       else
         log "${RED}启动失败，将在下次更新检测时重试${NC}"
         return 1
@@ -673,6 +742,13 @@ EOF
 main() {
   if [[ "$OS_TYPE" == "Ubuntu" ]]; then
     install_dependencies
+    # 确保 xdotool 已安装（用于窗口管理）
+    if ! check_command xdotool; then
+      log "${BLUE}安装 xdotool（窗口管理工具）...${NC}"
+      sudo apt-get install -y xdotool || {
+        log "${YELLOW}安装 xdotool 失败，窗口关闭功能可能受影响${NC}"
+      }
+    fi
   fi
   if [[ "$OS_TYPE" == "macOS" || "$OS_TYPE" == "Linux" ]]; then
     install_homebrew
@@ -685,8 +761,8 @@ main() {
   
   # 首次启动节点
   log "${BLUE}首次启动 Nexus 节点...${NC}"
-  install_nexus_cli
   cleanup_restart
+  install_nexus_cli
   if start_node; then
     log "${GREEN}节点启动成功！${NC}"
   else
@@ -703,8 +779,8 @@ main() {
     
     if check_github_updates; then
       log "${BLUE}检测到更新，准备重启节点...${NC}"
-      install_nexus_cli
       cleanup_restart
+      install_nexus_cli
       if start_node; then
         log "${GREEN}节点已成功重启！${NC}"
       else
