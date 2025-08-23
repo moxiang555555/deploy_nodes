@@ -451,13 +451,33 @@ install_nexus_cli() {
   if [[ "$success" == false ]]; then
     log "${RED}Nexus CLI 安装/更新失败 $max_attempts 次，将尝试使用当前版本运行节点。${NC}"
   fi
+  
+  # 等待一下确保安装完成
+  sleep 3
+  
+  # 验证安装结果
   if command -v nexus-network &>/dev/null; then
     log "${GREEN}nexus-network 版本：$(nexus-network --version 2>/dev/null)${NC}"
   elif command -v nexus-cli &>/dev/null; then
     log "${GREEN}nexus-cli 版本：$(nexus-cli --version 2>/dev/null)${NC}"
   else
     log "${RED}未找到 nexus-network 或 nexus-cli，无法运行节点。${NC}"
-    exit 1
+    log "${YELLOW}尝试重新安装...${NC}"
+    # 再次尝试安装
+    if curl -s https://cli.nexus.xyz/ | sh; then
+      log "${GREEN}重新安装成功！${NC}"
+      sleep 2
+      # 重新验证
+      if command -v nexus-network &>/dev/null || command -v nexus-cli &>/dev/null; then
+        log "${GREEN}验证通过，可以继续运行节点${NC}"
+      else
+        log "${RED}重新安装后仍然无法找到命令，退出脚本${NC}"
+        exit 1
+      fi
+    else
+      log "${RED}重新安装失败，退出脚本${NC}"
+      exit 1
+    fi
   fi
   
   # 首次安装后生成仓库hash，避免首次运行时等待
@@ -665,8 +685,8 @@ main() {
   
   # 首次启动节点
   log "${BLUE}首次启动 Nexus 节点...${NC}"
-  cleanup_restart
   install_nexus_cli
+  cleanup_restart
   if start_node; then
     log "${GREEN}节点启动成功！${NC}"
   else
@@ -683,8 +703,8 @@ main() {
     
     if check_github_updates; then
       log "${BLUE}检测到更新，准备重启节点...${NC}"
-      cleanup_restart
       install_nexus_cli
+      cleanup_restart
       if start_node; then
         log "${GREEN}节点已成功重启！${NC}"
       else
