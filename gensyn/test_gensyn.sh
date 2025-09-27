@@ -340,7 +340,7 @@ if [[ "$OS_TYPE" == "macos" ]]; then
 
   if [[ "$GENSYN_PERMISSION" == "full" ]]; then
     echo "🔐 权限级别：完整权限 - 生成所有 command 文件"
-    for script in gensyn.sh nexus.sh ritual.sh wai.sh startAll.sh quickq_run.sh; do
+    for script in gensyn.sh nexus.sh ritual.sh startAll.sh quickq_run.sh; do
       cmd_name="${script%.sh}.command"
       cat > "$DESKTOP_DIR/$cmd_name" <<EOF
 #!/bin/bash
@@ -357,7 +357,23 @@ read -n 1 -s
 EOF
       chmod +x "$DESKTOP_DIR/$cmd_name"
     done
-    echo "✅ 已在桌面生成所有可双击运行的 .command 文件。"
+    
+    # 生成 dria.command 文件
+    cat > "$DESKTOP_DIR/dria.command" <<EOF
+#!/bin/bash
+
+set -e
+trap 'echo -e "\n\033[33m⚠️ 脚本被中断，但终端将继续运行...\033[0m"; exit 0' INT TERM
+
+echo "🚀 正在启动 Dria Compute Launcher..."
+dkn-compute-launcher start
+echo -e "\n\033[32m✅ Dria Compute Launcher 执行完成\033[0m"
+echo "按任意键关闭此窗口..."
+read -n 1 -s
+EOF
+    chmod +x "$DESKTOP_DIR/dria.command"
+    
+    echo "✅ 已在桌面生成所有可双击运行的 .command 文件（包括 dria.command）。"
   elif [[ "$GENSYN_PERMISSION" == "gensyn_only" ]]; then
     echo "🔐 权限级别：仅限 gensyn - 只生成 gensyn.command 文件"
     cmd_name="gensyn.command"
@@ -377,25 +393,9 @@ EOF
     chmod +x "$DESKTOP_DIR/$cmd_name"
     echo "✅ 已在桌面生成 gensyn.command 文件。"
   else
-    echo "⚠️ 未知权限级别，默认生成所有文件"
-    for script in gensyn.sh nexus.sh ritual.sh wai.sh startAll.sh quickq_run.sh; do
-      cmd_name="${script%.sh}.command"
-      cat > "$DESKTOP_DIR/$cmd_name" <<EOF
-#!/bin/bash
-
-set -e
-trap 'echo -e "\n\033[33m⚠️ 脚本被中断，但终端将继续运行...\033[0m"; exit 0' INT TERM
-
-cd "$PROJECT_DIR" || { echo "❌ 无法进入项目目录"; exit 1; }
-echo "🚀 正在执行 $script..."
-./$script
-echo -e "\n\033[32m✅ $script 执行完成\033[0m"
-echo "按任意键关闭此窗口..."
-read -n 1 -s
-EOF
-      chmod +x "$DESKTOP_DIR/$cmd_name"
-    done
-    echo "✅ 已在桌面生成所有可双击运行的 .command 文件。"
+    echo "❌ 未知权限级别：$GENSYN_PERMISSION"
+    echo "⚠️ 无法确定应生成哪些文件，跳过桌面文件生成"
+    echo "请联系管理员检查权限配置"
   fi
 fi
 
