@@ -18,6 +18,17 @@ WALLET_INFO_FILE=".allora_wallet.info"
 DOCKER_START_TIMEOUT=30
 PROJECT_DIR="allora-offchain-node"
 
+# 检测操作系统
+OS_TYPE="unknown"
+if [[ "$(uname -s)" == "Darwin" ]]; then
+    OS_TYPE="macos"
+elif [[ -f /etc/os-release ]]; then
+    . /etc/os-release
+    if [[ "$ID" == "ubuntu" ]]; then
+        OS_TYPE="ubuntu"
+    fi
+fi
+
 # 日志函数
 log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
 log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
@@ -29,20 +40,36 @@ check_dependencies() {
     log_step "1. 检查系统依赖..."
     
     if ! command -v docker &> /dev/null; then
-        log_error "Docker 未安装，请先安装 Docker Desktop for Mac"
-        open https://www.docker.com/products/docker-desktop/
+        log_error "Docker 未安装，请先安装 Docker"
+        if [[ "$OS_TYPE" == "macos" ]]; then
+            log_info "macOS: 请访问 https://www.docker.com/products/docker-desktop/"
+            open https://www.docker.com/products/docker-desktop/
+        elif [[ "$OS_TYPE" == "ubuntu" ]]; then
+            log_info "Ubuntu: 请运行以下命令安装 Docker:"
+            echo "  curl -fsSL https://get.docker.com -o get-docker.sh"
+            echo "  sudo sh get-docker.sh"
+            echo "  sudo usermod -aG docker \$USER"
+        fi
         exit 1
     fi
     
     if ! command -v git &> /dev/null; then
         log_info "安装 Git..."
-        brew install git
+        if [[ "$OS_TYPE" == "macos" ]]; then
+            brew install git
+        elif [[ "$OS_TYPE" == "ubuntu" ]]; then
+            sudo apt update && sudo apt install -y git
+        fi
     fi
     
     if ! command -v allorad &> /dev/null; then
         log_info "安装 allorad..."
         curl -sSL https://raw.githubusercontent.com/allora-network/allora-chain/dev/install.sh | bash -s -- v0.12.1
-        export PATH="$PATH:/Users/$(whoami)/.local/bin"
+        if [[ "$OS_TYPE" == "macos" ]]; then
+            export PATH="$PATH:/Users/$(whoami)/.local/bin"
+        else
+            export PATH="$PATH:$HOME/.local/bin"
+        fi
     fi
     
     log_info "✅ 依赖检查通过"
@@ -58,9 +85,20 @@ start_docker_if_needed() {
     fi
     
     log_warn "Docker 未运行，正在启动..."
-    open -a Docker
     
-    log_info "等待 Docker 启动..."
+    # 检测操作系统并启动 Docker
+    if [[ "$OS_TYPE" == "macos" ]]; then
+        open -a Docker
+        log_info "等待 Docker Desktop 启动..."
+    elif [[ "$OS_TYPE" == "ubuntu" ]]; then
+        log_info "启动 Docker 服务..."
+        sudo systemctl start docker
+        sudo systemctl enable docker
+    else
+        log_error "❌ 不支持的操作系统，请手动启动 Docker"
+        exit 1
+    fi
+    
     local waited=0
     while [ $waited -lt $DOCKER_START_TIMEOUT ]; do
         if docker info &> /dev/null; then
@@ -76,7 +114,12 @@ start_docker_if_needed() {
     if docker info &> /dev/null; then
         log_info "✅ Docker 启动成功"
     else
-        log_error "❌ Docker 启动失败，请手动打开 Docker Desktop"
+        log_error "❌ Docker 启动失败，请手动启动 Docker"
+        if [[ "$OS_TYPE" == "macos" ]]; then
+            log_info "macOS: 请手动打开 Docker Desktop"
+        elif [[ "$OS_TYPE" == "ubuntu" ]]; then
+            log_info "Ubuntu: 请运行 'sudo systemctl start docker'"
+        fi
         exit 1
     fi
 }
