@@ -70,6 +70,9 @@ check_dependencies() {
         else
             export PATH="$PATH:$HOME/.local/bin"
         fi
+        log_info "✅ allorad 安装完成"
+    else
+        log_info "✅ 检测到 allorad 已安装，跳过安装"
     fi
     
     log_info "✅ 依赖检查通过"
