@@ -353,7 +353,7 @@ services:
     volumes:
       - ./config.json:/app/config.json:ro
     ports:
-      - "8080:8080"
+      - "8081:8080"
     networks:
       - allora-network
 
