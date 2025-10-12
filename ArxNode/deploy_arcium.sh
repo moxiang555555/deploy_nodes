@@ -86,7 +86,7 @@ install_solana() {
     if ! check_cmd "solana"; then
         log "安装 Solana CLI..."
         if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-            sh -c "$(curl -sSfL https://release.solana.com/v1.18.18/install)"
+            sh -c "$(curl --proto '=https' --tlsv1.2 -sSfL https://solana-install.solana.workers.dev | bash)"
         elif [[ "$OSTYPE" == "darwin"* ]]; then
             brew install solana
         fi
