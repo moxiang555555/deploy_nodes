@@ -7,6 +7,13 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
   # macOS
   HOME_DIR="$HOME"
   OS_TYPE="macos"
+  
+  # 在 macOS 上检查是否以 root 身份运行
+  if [[ "$EUID" -eq 0 ]]; then
+    echo "错误：在 macOS 上请不要以 root 身份运行此脚本"
+    echo "请以普通用户身份运行：./deploy_ubuntu.sh"
+    exit 1
+  fi
 else
   # Linux
   HOME_DIR="$(getent passwd "$TARGET_USER" | cut -d: -f6)"
@@ -38,6 +45,12 @@ if [[ "$OS_TYPE" == "macos" ]]; then
   echo "正在检查 Homebrew..."
   if ! command -v brew &> /dev/null; then
     echo "安装 Homebrew..."
+    # 确保不以 root 身份运行
+    if [[ "$EUID" -eq 0 ]]; then
+      echo "错误：请不要以 root 身份运行此脚本"
+      echo "请以普通用户身份运行：./deploy_ubuntu.sh"
+      exit 1
+    fi
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     # 配置 Homebrew 环境变量
     if [[ -f /opt/homebrew/bin/brew ]]; then
@@ -50,6 +63,12 @@ if [[ "$OS_TYPE" == "macos" ]]; then
   fi
   
   echo "正在安装必要的依赖包..."
+  # 确保以普通用户身份运行 brew
+  if [[ "$EUID" -eq 0 ]]; then
+    echo "错误：请不要以 root 身份运行此脚本"
+    echo "请以普通用户身份运行：./deploy_ubuntu.sh"
+    exit 1
+  fi
   brew update || true
   brew install curl git wget jq make gcc automake autoconf tmux htop pkg-config openssl protobuf || {
     echo "部分包安装失败，尝试继续执行..."
@@ -149,19 +168,32 @@ fi
 echo "正在安装 Aztec CLI（用户：$TARGET_USER）..."
 if [[ "$OS_TYPE" == "macos" ]]; then
   # macOS - 直接以当前用户安装
-  yes y | bash -i <(curl -s https://install.aztec.network)
+  echo "安装 Aztec CLI..."
+  bash <(curl -s https://install.aztec.network) <<< "y"
+  
+  # 配置 PATH
   if ! grep -q ".aztec/bin" ~/.zshrc; then
     echo 'export PATH="$HOME/.aztec/bin:$PATH"' >> ~/.zshrc
   fi
   if ! grep -q ".aztec/bin" ~/.bashrc; then
     echo 'export PATH="$HOME/.aztec/bin:$PATH"' >> ~/.bashrc
   fi
+  
+  # 加载环境变量
   export PATH="$HOME/.aztec/bin:$PATH"
-  command -v aztec >/dev/null && aztec -V || { echo "Aztec CLI 未就绪"; exit 1; }
+  
+  # 验证安装
+  if command -v aztec >/dev/null 2>&1; then
+    echo "Aztec CLI 安装成功: $(aztec -V)"
+  else
+    echo "Aztec CLI 安装失败"
+    exit 1
+  fi
 else
   # Linux - 使用 sudo 以目标用户身份安装
   sudo -H -u "$TARGET_USER" bash -lc '
-    yes y | bash -i <(curl -s https://install.aztec.network)
+    echo "安装 Aztec CLI..."
+    bash <(curl -s https://install.aztec.network) <<< "y"
     if ! grep -q ".aztec/bin" ~/.bashrc; then
       echo '\''export PATH="$HOME/.aztec/bin:$PATH"'\'' >> ~/.bashrc
     fi
@@ -283,12 +315,12 @@ fi
 
 # 启动 Aztec 节点
 echo "启动 Aztec 节点（前台）..."
-if [[ "$OS_TYPE" == "macos" ]]; then
-  # macOS - 直接启动
-  bash -lc "$AZTEC_DIR/aztec_start.sh"
-else
-  # Linux - 使用 docker 组上下文启动
-  sudo -H -u "$TARGET_USER" sg docker -c "bash -lc '$AZTEC_DIR/aztec_start.sh'"
-fi
+echo "配置文件已生成在: $AZTEC_DIR"
+echo "启动脚本: $AZTEC_DIR/aztec_start.sh"
+echo ""
+echo "请手动运行以下命令启动节点："
+echo "cd $AZTEC_DIR && ./aztec_start.sh"
+echo ""
+echo "或者按 Ctrl+C 退出，稍后手动启动节点"
 
 echo "安装并启动 Aztec 节点完成！"
