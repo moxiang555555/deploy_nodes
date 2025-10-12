@@ -211,6 +211,14 @@ install_python() {
 install_python_deps() {
     info "检查 Python 依赖安装状态..."
     
+    # 升级 pip
+    log "📥 升级 pip..."
+    pyenv exec python -m pip install -U pip || error "pip 升级失败"
+    
+    # 安装 rich
+    log "📥 安装 rich..."
+    pyenv exec python -m pip install "rich>=13" || error "rich 安装失败"
+    
     # 检查是否已安装 psutil 和 readchar
     if pyenv exec pip list | grep -q "psutil" && pyenv exec pip list | grep -q "readchar"; then
         log "✅ Python 依赖 (psutil, readchar) 已安装，跳过安装步骤"
