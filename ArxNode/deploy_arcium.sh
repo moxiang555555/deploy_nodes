@@ -37,9 +37,42 @@ install_dependencies() {
     
     # 检测系统类型
     if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        # Linux
+        # Linux - 安装基础包
         sudo apt update && sudo apt upgrade -y
-        sudo apt install curl iptables build-essential git wget jq make gcc automake autoconf tmux htop pkg-config libssl-dev tar clang ncdu unzip libudev-dev protobuf-compiler bc -y
+        sudo apt install curl iptables build-essential git wget lz4 jq make gcc nano automake autoconf tmux htop nvme-cli pkg-config libssl-dev libleveldb-dev tar clang bsdmainutils ncdu unzip libleveldb-dev libudev-dev protobuf-compiler bc -y
+        
+        # 安装 Node.js 22.x
+        log "安装 Node.js 22.x..."
+        curl -fsSL https://deb.nodesource.com/setup_22.x | sudo bash -
+        sudo apt install -y nodejs
+        
+        # 验证 Node.js 安装
+        if command -v node > /dev/null 2>&1; then
+            success "Node.js 安装完成: $(node -v)"
+        else
+            error "Node.js 安装失败"
+            return 1
+        fi
+        
+        # 安装 Yarn (npm 方式)
+        log "安装 Yarn..."
+        npm install -g yarn
+        if command -v yarn > /dev/null 2>&1; then
+            success "Yarn 安装完成: $(yarn -v)"
+        else
+            warning "Yarn npm 安装失败，尝试官方安装器..."
+            # 备用：使用官方安装器
+            curl -o- -L https://yarnpkg.com/install.sh | bash
+            export PATH="$HOME/.yarn/bin:$HOME/.config/yarn/global/node_modules/.bin:$PATH"
+            source ~/.bashrc
+            
+            if command -v yarn > /dev/null 2>&1; then
+                success "Yarn 安装完成: $(yarn -v)"
+            else
+                error "Yarn 安装失败"
+                return 1
+            fi
+        fi
         
     elif [[ "$OSTYPE" == "darwin"* ]]; then
         # Mac OSX
@@ -48,11 +81,31 @@ install_dependencies() {
             /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
         fi
         brew update || true
+        
+        # 安装基础包
         brew install curl git wget jq make gcc automake autoconf tmux htop pkg-config openssl protobuf bc || {
-    warning "部分包安装失败，尝试继续执行..."
-    # 尝试单独安装失败的包
-    brew install bc || warning "bc 安装失败，脚本将继续运行但可能影响功能"
-}
+            warning "部分包安装失败，尝试继续执行..."
+            # 尝试单独安装失败的包
+            brew install bc || warning "bc 安装失败，脚本将继续运行但可能影响功能"
+        }
+        
+        # 安装 Node.js
+        if ! check_cmd "node"; then
+            log "安装 Node.js..."
+            brew install node
+            success "Node.js 安装完成: $(node -v)"
+        else
+            success "Node.js 已安装: $(node -v)"
+        fi
+        
+        # 安装 Yarn
+        if ! check_cmd "yarn"; then
+            log "安装 Yarn..."
+            brew install yarn
+            success "Yarn 安装完成: $(yarn -v)"
+        else
+            success "Yarn 已安装: $(yarn -v)"
+        fi
     fi
 }
 
@@ -483,6 +536,20 @@ verify_installation() {
         all_success=false
     fi
     
+    if check_cmd "node"; then
+        success "Node.js: $(node --version)"
+    else
+        error "Node.js: 未安装"
+        all_success=false
+    fi
+    
+    if check_cmd "yarn"; then
+        success "Yarn: $(yarn --version)"
+    else
+        error "Yarn: 未安装"
+        all_success=false
+    fi
+    
     if [ "$all_success" = true ]; then
         success "🎉 节点环境准备完成！"
     else
@@ -536,7 +603,7 @@ main() {
     # 检查安装状态
     info "检查节点运行所需组件..."
     local skip_install=false
-    if check_cmd "solana" && check_cmd "arcium" && check_cmd "docker" && check_cmd "anchor"; then
+    if check_cmd "solana" && check_cmd "arcium" && check_cmd "docker" && check_cmd "anchor" && check_cmd "node" && check_cmd "yarn"; then
         echo
         info "检测到组件已安装，是否跳过安装步骤？ (y/n)"
         read -r skip_install
