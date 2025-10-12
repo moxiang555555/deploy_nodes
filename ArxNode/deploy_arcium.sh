@@ -172,34 +172,49 @@ install_anchor() {
     fi
 }
 
-# 安装 Arcium - 修改为带重试的版本
+# 安装 Arcium - 使用官方安装器
 install_arcium() {
     if ! check_cmd "arcium"; then
         log "安装 Arcium..."
         
-        # 尝试多次重试
-        local max_retries=3
-        local retry_count=0
+        # 创建安装目录
+        mkdir -p arcium-node-setup
+        cd arcium-node-setup
         
-        while [ $retry_count -lt $max_retries ]; do
-            if curl --proto '=https' --tlsv1.2 -sSfL https://install.arcium.com/ | bash; then
-                success "Arcium 安装完成"
-                
-                # 添加到 PATH
-                echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.bashrc
-                echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.zshrc
-                export PATH="$HOME/.cargo/bin:$PATH"
-                
-                return 0
-            else
-                retry_count=$((retry_count + 1))
-                warning "安装失败，第 $retry_count 次重试..."
-                sleep 5
-            fi
-        done
+        # 使用官方安装器
+        curl --proto '=https' --tlsv1.2 -sSfL https://arcium-install.arcium.workers.dev/ | bash
         
-        error "Arcium 安装失败，请检查网络连接"
-        return 1
+        # 验证安装
+        if command -v arcium > /dev/null 2>&1; then
+            success "Arcium 安装完成: $(arcium --version)"
+        else
+            error "Arcium 安装失败"
+            cd ..
+            return 1
+        fi
+        
+        # 检查 arcup 是否可用
+        if command -v arcup > /dev/null 2>&1; then
+            success "Arcup 可用: $(arcup --version)"
+        else
+            warning "Arcup 未找到，但 Arcium 安装成功"
+        fi
+        
+        # 返回上级目录
+        cd ..
+        
+        # 添加到 PATH（如果需要）
+        if ! echo "$PATH" | grep -q "$HOME/.cargo/bin"; then
+            echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.bashrc
+            echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.zshrc
+            export PATH="$HOME/.cargo/bin:$PATH"
+        fi
+        
+    else
+        success "Arcium 已安装: $(arcium --version)"
+        if command -v arcup > /dev/null 2>&1; then
+            success "Arcup 可用: $(arcup --version)"
+        fi
     fi
 }
 
