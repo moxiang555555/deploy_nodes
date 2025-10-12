@@ -54,24 +54,29 @@ install_dependencies() {
             return 1
         fi
         
-        # 安装 Yarn (npm 方式)
+        # 安装 Yarn (使用官方安装器，避免权限问题)
         log "安装 Yarn..."
-        npm install -g yarn
+        curl -o- -L https://yarnpkg.com/install.sh | bash
+        
+        # 配置 Yarn PATH
+        export PATH="$HOME/.yarn/bin:$HOME/.config/yarn/global/node_modules/.bin:$PATH"
+        
+        # 添加到 shell 配置文件
+        if ! grep -q "yarn/bin" ~/.bashrc; then
+            echo 'export PATH="$HOME/.yarn/bin:$HOME/.config/yarn/global/node_modules/.bin:$PATH"' >> ~/.bashrc
+        fi
+        if [ -f ~/.zshrc ] && ! grep -q "yarn/bin" ~/.zshrc; then
+            echo 'export PATH="$HOME/.yarn/bin:$HOME/.config/yarn/global/node_modules/.bin:$PATH"' >> ~/.zshrc
+        fi
+        
+        # 重新加载环境变量
+        source ~/.bashrc 2>/dev/null || true
+        
         if command -v yarn > /dev/null 2>&1; then
             success "Yarn 安装完成: $(yarn -v)"
         else
-            warning "Yarn npm 安装失败，尝试官方安装器..."
-            # 备用：使用官方安装器
-            curl -o- -L https://yarnpkg.com/install.sh | bash
-            export PATH="$HOME/.yarn/bin:$HOME/.config/yarn/global/node_modules/.bin:$PATH"
-            source ~/.bashrc
-            
-            if command -v yarn > /dev/null 2>&1; then
-                success "Yarn 安装完成: $(yarn -v)"
-            else
-                error "Yarn 安装失败"
-                return 1
-            fi
+            error "Yarn 安装失败"
+            return 1
         fi
         
     elif [[ "$OSTYPE" == "darwin"* ]]; then
