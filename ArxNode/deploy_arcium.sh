@@ -314,7 +314,7 @@ check_and_fund_account() {
 # 设置 Arx 节点
 setup_arx_node() {
     local node_offset=${1:-$(( RANDOM % 1000000000 + 1000000000 ))}
-    local cluster_offset=${2:-"69069069"}
+    local cluster_offset=${2:-"47359763"}
     local public_ip=$(curl -s ipv4.icanhazip.com)
     
     log "开始设置 Arx 节点..."
