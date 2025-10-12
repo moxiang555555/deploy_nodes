@@ -148,6 +148,30 @@ install_docker() {
     success "Docker 安装完成"
 }
 
+# 安装 Anchor
+install_anchor() {
+    if ! check_cmd "anchor"; then
+        log "安装 Anchor..."
+        
+        # 克隆 Anchor 仓库
+        git clone https://github.com/coral-xyz/anchor.git
+        cd anchor
+        
+        # 切换到指定版本
+        git checkout v0.31.1
+        
+        # 安装 Anchor CLI
+        cargo install --path cli --force
+        
+        # 返回上级目录并清理
+        cd .. && rm -rf anchor
+        
+        success "Anchor 安装完成"
+    else
+        success "Anchor 已安装: $(anchor --version)"
+    fi
+}
+
 # 安装 Arcium - 修改为带重试的版本
 install_arcium() {
     if ! check_cmd "arcium"; then
@@ -430,6 +454,13 @@ verify_installation() {
         all_success=false
     fi
     
+    if check_cmd "anchor"; then
+        success "Anchor: $(anchor --version)"
+    else
+        error "Anchor: 未安装"
+        all_success=false
+    fi
+    
     if docker info > /dev/null 2>&1; then
         success "Docker: 正在运行"
     else
@@ -490,7 +521,7 @@ main() {
     # 检查安装状态
     info "检查节点运行所需组件..."
     local skip_install=false
-    if check_cmd "solana" && check_cmd "arcium" && check_cmd "docker"; then
+    if check_cmd "solana" && check_cmd "arcium" && check_cmd "docker" && check_cmd "anchor"; then
         echo
         info "检测到组件已安装，是否跳过安装步骤？ (y/n)"
         read -r skip_install
@@ -506,6 +537,7 @@ main() {
         install_rust
         install_solana
         install_docker
+        install_anchor
         install_arcium
         verify_installation
     fi
