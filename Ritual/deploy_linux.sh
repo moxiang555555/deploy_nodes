@@ -172,9 +172,10 @@ select yn in "是 (全新部署，清除并重装)" "否 (继续现有环境)" "
     esac
 done
 
-# 检查端口是否占用
-info "检查端口占用..."
+# 检查端口是否占用前先尝试停止并清理 Docker Compose 服务
 for port in 4000 6379 8545 5001; do
+    echo "🧹 停止并清理当前 Docker Compose 服务..."
+    docker compose down || { echo "⚠️ docker compose down 执行失败，继续执行下一步..."; }
     if lsof -i :$port &> /dev/null; then
         info "端口 $port 被占用，尝试自动kill占用进程..."
         pids=$(lsof -t -i :$port)
@@ -198,21 +199,15 @@ if [ "$skip_to_deploy" = "true" ] || ([ "$yn" != "退出" ] && [ "$update_config
 
     # 检查 RPC URL 连通性
     echo "[9/15] 🔍 测试 RPC URL 连通性..." | tee -a "$log_file"
-    max_attempts=5
-    attempt=1
-    while [ $attempt -le $max_attempts ]; do
+    while true; do
         chain_id=$(curl -s -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"eth_chainId","id":1}' "$RPC_URL" | jq -r '.result')
         if [ -n "$chain_id" ]; then
             info "检测到链 ID: $chain_id"
             break
         else
-            warn "无法连接到 RPC URL 或无效响应，第 $attempt/$max_attempts 次重试..."
-            if [ $attempt -eq $max_attempts ]; then
-                error "无法连接到 RPC URL，已达到最大重试次数 ($max_attempts)。请检查 RPC URL 或网络连接。"
-            fi
+            warn "无法连接到 RPC URL 或无效响应，正在重试..."
             sleep 10
         fi
-        ((attempt++))
     done
 fi
 
@@ -249,41 +244,26 @@ if [ "$update_config_and_restart" = "true" ]; then
     # 检查并更新 docker-compose.yml 中的 depends_on 设置
     info "检查并更新 docker-compose.yaml 中的 depends_on 设置..."
     if grep -q 'depends_on: \[ redis, infernet-anvil \]' docker-compose.yaml; then
-        sed -i 's/depends_on: \[ redis, infernet-anvil \]/depends_on: [ redis ]/g' docker-compose.yaml
+        sed -i.bak 's/depends_on: \[ redis, infernet-anvil \]/depends_on: [ redis ]/' docker-compose.yaml
         info "已修改 depends_on 配置。备份文件保存在：docker-compose.yaml.bak"
     else
         info "depends_on 配置已正确，无需修改。"
     fi
     
-    # 停止容器
-    info "正在停止现有容器..."
-    if docker-compose down; then
-        info "容器已停止"
-    else
-        warn "停止容器时出现警告，继续执行..."
+    echo "🧹 停止并清理当前 Docker Compose 服务..."
+    docker compose down || { echo "⚠️ docker compose down 执行失败，继续执行下一步..."; }
+
+    # 清理旧的 infernet-node 日志后台进程
+    if pgrep -f "docker logs -f infernet-node" > /dev/null; then
+      pkill -f "docker logs -f infernet-node"
+      info "已清理旧的 infernet-node 日志后台进程"
     fi
-    
-    # 启动指定服务：node、redis、fluentbit
-    info "正在启动指定服务：node、redis、fluentbit..."
-    attempt=1
-    max_attempts=5
-    while [ $attempt -le $max_attempts ]; do
-        info "尝试启动容器 （第 $attempt 次）..."
-        if docker-compose up node redis fluentbit; then
-            info "容器启动成功"
-            # 启动日志后台保存
-            (docker logs -f infernet-node > "$HOME/infernet-deployment.log" 2>&1 &)
-            break
-        else
-            warn "启动容器失败，第 $attempt/$max_attempts 次重试..."
-            if [ $attempt -eq $max_attempts ]; then
-                error "启动容器失败，已达到最大重试次数 ($max_attempts)。请检查 Docker 配置或日志。"
-            fi
-            sleep 10
-        fi
-        ((attempt++))
-    done
-    
+
+    echo "⚙️ 启动指定服务：node、redis、fluentbit"
+    docker compose up node redis fluentbit &
+    # 启动日志后台保存
+    (docker logs -f infernet-node > "$HOME/infernet-deployment.log" 2>&1 &)
+
     # 容器将在前台运行，脚本到此结束
     echo "[8/8] ✅ 配置更新完成！容器已在前台启动。" | tee -a "$log_file"
     info "容器正在前台运行，按 Ctrl+C 可停止容器"
@@ -296,9 +276,7 @@ if [ "$skip_to_deploy" = "true" ]; then
     # 检查 Foundry
     if ! command -v forge &> /dev/null; then
         info "Foundry 未安装，正在安装..."
-        max_attempts=5
-        attempt=1
-        while [ $attempt -le $max_attempts ]; do
+        while true; do
             if curl -L https://foundry.paradigm.xyz | bash; then
                 echo 'export PATH="$HOME/.foundry/bin:$PATH"' >> ~/.bashrc
                 source ~/.bashrc
@@ -306,16 +284,13 @@ if [ "$skip_to_deploy" = "true" ]; then
                     info "Foundry 安装成功，forge 版本：$(forge --version)"
                     break
                 else
-                    warn "Foundry 更新失败，第 $attempt/$max_attempts 次重试..."
+                    warn "Foundry 更新失败，正在重试..."
+                    sleep 10
                 fi
             else
-                warn "Foundry 安装失败，第 $attempt/$max_attempts 次重试..."
+                warn "Foundry 安装失败，正在重试..."
+                sleep 10
             fi
-            if [ $attempt -eq $max_attempts ]; then
-                error "Foundry 安装失败，已达到最大重试次数 ($max_attempts)。请检查网络或权限。"
-            fi
-            sleep 10
-            ((attempt++))
         done
     else
         info "Foundry 已安装，forge 版本：$(forge --version)"
@@ -330,66 +305,37 @@ if [ "$full_deploy" = "true" ] || [ ! -d "$HOME/infernet-container-starter" ]; t
         info "目录 $HOME/infernet-container-starter 已存在，正在删除..."
         rm -rf "$HOME/infernet-container-starter" || error "删除 $HOME/infernet-container-starter 失败，请检查权限。"
     fi
-    max_attempts=5
-    attempt=1
-    while [ $attempt -le $max_attempts ]; do
-        info "尝试克隆仓库 （第 $attempt 次）..."
-        if timeout 300 git clone https://github.com/ritual-net/infernet-container-starter "$HOME/infernet-container-starter" 2> git_clone_error.log; then
-            if [ -d "$HOME/infernet-container-starter/deploy" ] && [ -d "$HOME/infernet-container-starter/projects/hello-world" ]; then
-                info "仓库克隆成功，内容验证通过。"
-                break
-            else
-                error "克隆的仓库内容不完整，缺少 deploy 或 projects/hello-world 目录。"
-            fi
+    while true; do
+        if git clone https://github.com/ritual-net/infernet-container-starter "$HOME/infernet-container-starter"; then
+            info "仓库克隆成功。"
+            break
         else
-            warn "克隆仓库失败，错误信息：$(cat git_clone_error.log)"
-            if [ $attempt -eq $max_attempts ]; then
-                error "克隆仓库失败，已达到最大重试次数 ($max_attempts)。请检查网络或 GitHub 访问权限。"
-            fi
-            warn "正在重试 ($attempt/$max_attempts)..."
+            warn "克隆仓库失败，正在重试..."
             sleep 10
         fi
-        ((attempt++))
     done
 else
     info "使用现有目录 $HOME/infernet-container-starter 继续部署..."
-    if [ ! -d "$HOME/infernet-container-starter/deploy" ] || \
-       [ ! -d "$HOME/infernet-container-starter/projects/hello-world/contracts" ] || \
-       [ ! -f "$HOME/infernet-container-starter/projects/hello-world/contracts/Makefile" ] || \
-       [ ! -f "$HOME/infernet-container-starter/projects/hello-world/contracts/script/Deploy.s.sol" ]; then
-        error "现有目录 $HOME/infernet-container-starter 不完整，缺少必要文件或目录，请选择全新部署。"
-    fi
 fi
-cd "$(realpath -m "$HOME/infernet-container-starter")" || error "无法进入 $HOME/infernet-container-starter 目录，请检查目录是否存在或是否为有效符号链接。"
-info "当前工作目录：$(pwd)"
-ls -la . || warn "目录 $HOME/infernet-container-starter 为空或无法访问。"
+cd "$HOME/infernet-container-starter" || error "无法进入 $HOME/infernet-container-starter 目录。"
 
 echo "[11/15] 📦 拉取 hello-world 容器..." | tee -a "$log_file"
-max_attempts=5
-attempt=1
-while [ $attempt -le $max_attempts ]; do
+while true; do
     if curl -s --connect-timeout 5 https://registry-1.docker.io/ > /dev/null; then
         break
     else
-        warn "无法连接到 Docker Hub，第 $attempt/$max_attempts 次重试..."
-        if [ $attempt -eq $max_attempts ]; then
-            error "无法连接到 Docker Hub，已达到最大重试次数 ($max_attempts)。请检查网络连接。"
-        fi
+        warn "无法连接到 Docker Hub，正在重试..."
         sleep 10
     fi
-    ((attempt++))
 done
 attempt=1
-while [ $attempt -le $max_attempts ]; do
+while true; do
     info "尝试拉取 ritualnetwork/hello-world-infernet:latest （第 $attempt 次）..."
     if docker pull ritualnetwork/hello-world-infernet:latest; then
         info "镜像拉取成功。"
         break
     else
-        warn "拉取 hello-world 容器失败，第 $attempt/$max_attempts 次重试..."
-        if [ $attempt -eq $max_attempts ]; then
-            error "拉取容器失败，已达到最大重试次数 ($max_attempts)。请检查 Docker 配置或网络。"
-        fi
+        warn "拉取 hello-world 容器失败，正在重试..."
         sleep 10
     fi
     ((attempt++))
@@ -501,18 +447,15 @@ EOF
 if [ "$full_deploy" = "true" ]; then
     echo "[14/15] 🐳 启动 Docker 容器..." | tee -a "$log_file"
     attempt=1
-    max_attempts=5
-    while [ $attempt -le $max_attempts ]; do
+    while true; do
         info "尝试启动 Docker 容器 （第 $attempt 次）..."
         if docker-compose -f "$HOME/infernet-container-starter/deploy/docker-compose.yaml" up -d; then
             info "Docker 容器启动成功。"
+            # 启动日志后台保存
             (docker logs -f infernet-node > "$HOME/infernet-deployment.log" 2>&1 &)
             break
         else
-            warn "启动 Docker 容器失败，第 $attempt/$max_attempts 次重试..."
-            if [ $attempt -eq $max_attempts ]; then
-                error "启动容器失败，已达到最大重试次数 ($max_attempts)。请检查 Docker 配置或日志。"
-            fi
+            warn "启动 Docker 容器失败，正在重试..."
             sleep 10
         fi
         ((attempt++))
@@ -522,77 +465,48 @@ fi
 echo "[15/15] 🛠️ 安装 Foundry..." | tee -a "$log_file"
 if ! command -v forge &> /dev/null; then
     info "Foundry 未安装，正在安装..."
-    max_attempts=5
-    attempt=1
-    while [ $attempt -le $max_attempts ]; do
+    while true; do
         if curl -L https://foundry.paradigm.xyz | bash; then
-            # 确保环境变量正确设置
-            export PATH="$HOME/.foundry/bin:$PATH"
-            # 重新加载 bashrc
-            source ~/.bashrc 2>/dev/null || true
-            # 等待一下让安装完成
-            sleep 5
-            # 尝试运行 foundryup
-            if "$HOME/.foundry/bin/foundryup" 2>/dev/null || foundryup 2>/dev/null; then
-                # 再次确保环境变量加载
-                export PATH="$HOME/.foundry/bin:$PATH"
-                source ~/.bashrc 2>/dev/null || true
-                # 检查 forge 是否可用
-                if forge --version &>/dev/null; then
-                    info "Foundry 安装成功，forge 版本：$(forge --version)"
-                    break
-                else
-                    warn "Foundry 安装完成但 forge 命令不可用，第 $attempt/$max_attempts 次重试..."
-                fi
+            echo 'export PATH="$HOME/.foundry/bin:$PATH"' >> ~/.bashrc
+            source ~/.bashrc
+            if foundryup; then
+                info "Foundry 安装成功，forge 版本：$(forge --version)"
+                break
             else
-                warn "Foundry 更新失败，第 $attempt/$max_attempts 次重试..."
+                warn "Foundry 更新失败，正在重试..."
+                sleep 10
             fi
         else
-            warn "Foundry 安装失败，第 $attempt/$max_attempts 次重试..."
+            warn "Foundry 安装失败，正在重试..."
+            sleep 10
         fi
-        if [ $attempt -eq $max_attempts ]; then
-            error "Foundry 安装失败，已达到最大重试次数 ($max_attempts)。请检查网络或权限。"
-        fi
-        sleep 10
-        ((attempt++))
     done
 else
     info "Foundry 已安装，forge 版本：$(forge --version)"
 fi
 
 echo "[16/16] 📚 安装 Forge 库..." | tee -a "$log_file"
-cd "$HOME/infernet-container-starter/projects/hello-world/contracts" || error "无法进入 $HOME/infernet-container-starter/projects/hello-world/contracts 目录"
+cd "$HOME/infernet-container-starter/projects/hello-world/contracts"
 if ! rm -rf lib/forge-std lib/infernet-sdk; then
     warn "清理旧 Forge 库失败，继续安装..."
 fi
-max_attempts=5
-attempt=1
-while [ $attempt -le $max_attempts ]; do
+while true; do
     if forge install foundry-rs/forge-std; then
         info "forge-std 安装成功。"
         break
     else
-        warn "安装 forge-std 失败，第 $attempt/$max_attempts 次重试..."
-        if [ $attempt -eq $max_attempts ]; then
-            error "安装 forge-std 失败，已达到最大重试次数 ($max_attempts)。"
-        fi
+        warn "安装 forge-std 失败，正在重试..."
         sleep 10
     fi
-    ((attempt++))
 done
-attempt=1
-while [ $attempt -le $max_attempts ]; do
+while true; do
     if forge install ritual-net/infernet-sdk; then
         info "infernet-sdk 安装成功。"
         break
     else
-        warn "安装 infernet-sdk 失败，第 $attempt/$max_attempts 次重试..."
-        if [ $attempt -eq $max_attempts ]; then
-            error "安装 infernet-sdk 失败，已达到最大重试次数 ($max_attempts)。"
-        fi
+        warn "安装 infernet-sdk 失败，正在重试..."
         sleep 10
     fi
-    ((attempt++))
 done
 
 echo "[17/17] 🔧 写入部署脚本..." | tee -a "$log_file"
@@ -627,18 +541,14 @@ EOF
 
 echo "[19/19] 🚀 开始部署合约..." | tee -a "$log_file"
 cd "$HOME/infernet-container-starter/projects/hello-world/contracts" || error "无法进入 $HOME/infernet-container-starter/projects/hello-world/contracts 目录"
-max_attempts=5
 attempt=1
-while [ $attempt -le $max_attempts ]; do
+while true; do
     info "尝试检查 RPC URL 连通性 （第 $attempt 次）..."
     if curl -s -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"eth_chainId","id":1}' "$RPC_URL" | jq -e '.result' > /dev/null; then
         info "RPC URL 连通性检查成功。"
         break
     else
-        warn "RPC URL 无法连接，第 $attempt/$max_attempts 次重试..."
-        if [ $attempt -eq $max_attempts ]; then
-            error "RPC URL 无法连接，已达到最大重试次数 ($max_attempts)。请检查 RPC URL 或网络。"
-        fi
+        warn "RPC URL 无法连接，正在重试..."
         sleep 10
     fi
     ((attempt++))
@@ -647,17 +557,14 @@ done
 # 直接部署合约，无需 Gas 费用检查
 deploy_log=$(mktemp)
 attempt=1
-while [ $attempt -le $max_attempts ]; do
+while true; do
     info "尝试部署合约 （第 $attempt 次）..."
     if PRIVATE_KEY="$PRIVATE_KEY" forge script script/Deploy.s.sol:Deploy --broadcast --rpc-url "$RPC_URL" > "$deploy_log" 2>&1; then
         info "🔺 合约部署成功！✅ 输出如下："
         cat "$deploy_log"
         break
     else
-        warn "合约部署失败，详细信息如下：\n$(cat "$deploy_log")\n第 $attempt/$max_attempts 次重试..."
-        if [ $attempt -eq $max_attempts ]; then
-            error "合约部署失败，已达到最大重试次数 ($max_attempts)。请检查日志或网络。"
-        fi
+        warn "合约部署失败，详细信息如下：\n$(cat "$deploy_log")\n正在重试..."
         sleep 10
     fi
     ((attempt++))
@@ -743,17 +650,14 @@ EOF
     info "正在调用合约..."
     call_log=$(mktemp)
     attempt=1
-    while [ $attempt -le $max_attempts ]; do
+    while true; do
         info "尝试调用合约 （第 $attempt 次）..."
         if PRIVATE_KEY="$PRIVATE_KEY" forge script "$call_contract_file" --broadcast --rpc-url "$RPC_URL" > "$call_log" 2>&1; then
             info "✅ 合约调用成功！输出如下："
             cat "$call_log"
             break
         else
-            warn "合约调用失败，详细信息如下：\n$(cat "$call_log")\n第 $attempt/$max_attempts 次重试..."
-            if [ $attempt -eq $max_attempts ]; then
-                error "合约调用失败，已达到最大重试次数 ($max_attempts)。请检查日志或网络。"
-            fi
+            warn "合约调用失败，详细信息如下：\n$(cat "$call_log")\n正在重试..."
             sleep 10
         fi
         ((attempt++))
@@ -766,32 +670,36 @@ rm -f "$deploy_log"
 
 echo "[20/20] ✅ 部署完成！容器已在前台启动。" | tee -a "$log_file"
 info "容器正在前台运行，按 Ctrl+C 可停止容器"
-info "请检查日志：docker logs infernet-node"
-info "下一步：可运行 'forge script script/CallContract.s.sol --rpc-url $RPC_URL --private-key $PRIVATE_KEY' 来再次调用合约。"
+info "容器启动后，脚本将自动退出"
 
-# 自动跳过 missing trie node 区块并重启节点
+# ========== 自动跳过missing trie node区块并重启节点 ===========
 monitor_and_skip_trie_error() {
     LOG_FILE="$HOME/infernet-deployment.log"
     CONFIG_FILE="$HOME/infernet-container-starter/deploy/config.json"
     COMPOSE_DIR="$HOME/infernet-container-starter/deploy"
     LAST_BATCH_FILE="/tmp/ritual_last_batch.txt"
 
-    info "启动 missing trie node 自动跳过守护进程..."
+    info "启动missing trie node自动跳过守护进程..."
     while true; do
+        # 检查日志中是否有新的 missing trie node 错误
         line=$(grep "missing trie node" "$LOG_FILE" | tail -1)
         if [[ -n "$line" ]]; then
+            # 提取 batch 区间
             batch=$(echo "$line" | grep -oE "batch=\\([0-9]+, [0-9]+\\)")
             if [[ $batch =~ ([0-9]+),\ ([0-9]+) ]]; then
                 start=${BASH_REMATCH[1]}
                 end=${BASH_REMATCH[2]}
                 new_start=$((end + 1))
+                # 检查是否已处理过该batch
                 if [[ -f "$LAST_BATCH_FILE" ]] && grep -q "$batch" "$LAST_BATCH_FILE"; then
                     sleep 30
                     continue
                 fi
                 echo "$batch" > "$LAST_BATCH_FILE"
-                warn "检测到 missing trie node 错误区块，自动跳过到 $new_start 并重启节点..."
+                warn "检测到missing trie node错误区块，自动跳过到 $new_start 并重启节点..."
+                # 修改 config.json
                 jq ".chain.snapshot_sync.starting_sub_id = $new_start" "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
+                # 重启docker服务
                 cd "$COMPOSE_DIR"
                 docker-compose restart node
                 sleep 60
@@ -801,7 +709,7 @@ monitor_and_skip_trie_error() {
     done
 }
 
-# 启动守护进程（后台运行）
-monitor_and_skip_trie_error &
+# 主流程一开始就启动守护进程（后台运行）
+nohup bash -c 'monitor_and_skip_trie_error' >/dev/null 2>&1 &
 
 exit 0
