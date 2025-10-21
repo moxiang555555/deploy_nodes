@@ -643,7 +643,8 @@ while [ $attempt -le $max_attempts ]; do
     fi
     ((attempt++))
 done
-warn "请确保私钥有足够余额以支付 gas 费用。"
+
+# 直接部署合约，无需 Gas 费用检查
 deploy_log=$(mktemp)
 attempt=1
 while [ $attempt -le $max_attempts ]; do
