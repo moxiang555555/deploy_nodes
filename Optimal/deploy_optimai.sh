@@ -24,11 +24,17 @@ while [[ $# -gt 0 ]]; do
             echo "⚠️ 开发者模式：跳过设备检查"
             shift
             ;;
+        --no-skip)
+            SKIP_DEVICE_CHECK=false
+            echo "📱 生产模式：启用设备检查"
+            shift
+            ;;
         --help)
             echo "使用方法: ./install.sh [选项]"
             echo "选项:"
             echo "  --skip-device-check   跳过设备检查（开发者模式）"
             echo "  --dev-mode            等同于 --skip-device-check"
+            echo "  --no-skip             不跳过设备检查（生产模式）"
             echo "  --help                显示此帮助信息"
             exit 0
             ;;
@@ -301,8 +307,11 @@ setup_device_check() {
 
 # ============ 设备检测开始 ============
 # 根据开发者模式决定是否跳过设备检查
-if [ "$SKIP_DEVICE_CHECK" = "false" ]; then
+if [ "$SKIP_DEVICE_CHECK" = "true" ]; then
+    echo "⚠️ 开发者模式：已跳过设备检查"
+else
     # 执行设备检测
+    echo "📱 正在检查设备状态..."
     setup_device_check
     device_check_rc=$?
 
@@ -320,9 +329,9 @@ if [ "$SKIP_DEVICE_CHECK" = "false" ]; then
         echo "❌ 设备码不存在于服务器中"
         echo "   此设备未授权，无法安装"
         exit 1
+    else
+        echo "✅ 设备检查通过"
     fi
-else
-    echo "⚠️ 开发者模式：已跳过设备检查"
 fi
 
 # 1. 检查是否已安装
@@ -480,13 +489,17 @@ echo -e "${CYAN}╚════════════════════�
 echo ""
 
 # 默认值
-SKIP_DEVICE_CHECK=false
+SKIP_DEVICE_CHECK=true
 
 # 解析命令行参数（如果通过终端运行）
 while [[ $# -gt 0 ]]; do
     case $1 in
         --skip-device-check|--dev-mode)
             SKIP_DEVICE_CHECK=true
+            shift
+            ;;
+        --no-skip)
+            SKIP_DEVICE_CHECK=false
             shift
             ;;
     esac
@@ -639,7 +652,10 @@ perform_device_check() {
 }
 
 # ============ 设备检测 ============
-if [ "$SKIP_DEVICE_CHECK" = "false" ]; then
+if [ "$SKIP_DEVICE_CHECK" = "true" ]; then
+    echo -e "${YELLOW}⚠️ 开发者模式：已跳过设备检查${RESET}"
+else
+    echo -e "${BLUE}📱 正在检查设备状态...${RESET}"
     perform_device_check
     device_check_rc=$?
 
@@ -655,9 +671,9 @@ if [ "$SKIP_DEVICE_CHECK" = "false" ]; then
         echo ""
         read -p "按任意键关闭..."
         exit 1
+    else
+        echo -e "${GREEN}✅ 设备检查通过${RESET}"
     fi
-else
-    echo -e "${YELLOW}⚠️ 开发者模式：已跳过设备检查${RESET}"
 fi
 
 # 不检查登录，直接启动（登录状态已保存在部署时）
