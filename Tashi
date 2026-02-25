@@ -1093,6 +1093,7 @@ MONITOR_EOF
     fi
 }
 
+# 修复：确保 heredoc 正确结束
 create_desktop_shortcut() {
     local desktop_path=""
     
@@ -1113,7 +1114,8 @@ create_desktop_shortcut() {
     
     local shortcut_file="$desktop_path/Tashi.command"
     
-    cat > "$shortcut_file" <<'SCRIPT_EOF'
+    # 修复：确保 heredoc 正确结束
+    cat > "$shortcut_file" << 'SCRIPT_EOF'
 #!/bin/bash
 
 # Tashi DePIN Worker restart script
@@ -1261,29 +1263,22 @@ if docker run -d \
     "$IMAGE_TAG" \
     run "$AUTH_DIR" \
     --unstable-update-download-path /tmp/tashi-depin-worker; then
-    :
+    docker logs -f "$CONTAINER_NAME"
 else
     exit 1
 fi
-
-docker logs -f "$CONTAINER_NAME"
 SCRIPT_EOF
 
     chmod +x "$shortcut_file"
-    
     log "INFO" "Desktop shortcut created: $shortcut_file"
 }
 
 post_install() {
         echo ""
-
         log "INFO" "Worker is running: ${CHECKMARK}"
-
         echo ""
-
         local status_cmd="${SUDO_CMD:+"$sudo "}${CONTAINER_RT} ps"
         local logs_cmd="${sudo:+"$sudo "}${CONTAINER_RT} logs $CONTAINER_NAME"
-
         log "INFO" "To check the status of your worker: '$status_cmd' (name: $CONTAINER_NAME)"
         log "INFO" "To view the logs of your worker: '$logs_cmd'"
         
