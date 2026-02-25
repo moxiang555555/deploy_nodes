@@ -14,7 +14,7 @@ log() {
 }
 
 # 默认值
-SKIP_DEVICE_CHECK=false
+SKIP_DEVICE_CHECK=true
 
 # 解析命令行参数
 while [[ $# -gt 0 ]]; do
