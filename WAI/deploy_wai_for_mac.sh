@@ -80,17 +80,36 @@ cleanup_wombo() {
 install_wai_cli() {
     if ! command -v wai >/dev/null 2>&1; then
         log "安装 WAI CLI..."
-        # 先安装 bash
+
+        # ----- 修改部分：安装新版 bash 并使用它执行安装脚本 -----
         if [[ "$OS_TYPE" == "macos" ]]; then
-            log "安装 bash..."
-            brew install bash || error "bash 安装失败"
+            # 检查是否已经安装了较新版本的 bash（通过 brew）
+            if ! command -v "$(brew --prefix)/bin/bash" >/dev/null 2>&1; then
+                log "安装新版 bash..."
+                brew install bash || error "bash 安装失败"
+            else
+                log "新版 bash 已安装"
+            fi
+            # 获取 brew bash 的路径
+            BREW_BASH="$(brew --prefix)/bin/bash"
+            if [[ ! -x "$BREW_BASH" ]]; then
+                error "无法找到 brew 安装的 bash"
+            fi
+            log "使用 brew bash: $BREW_BASH"
+        else
+            # Linux 下默认系统 bash 通常较新，直接使用系统 bash
+            BREW_BASH="bash"
         fi
-        curl -fsSL https://app.w.ai/install.sh | bash || error "WAI CLI 安装失败"
+
+        # 使用指定的 bash 执行安装脚本
+        curl -fsSL https://app.w.ai/install.sh | "$BREW_BASH" || error "WAI CLI 安装失败"
+        # ----------------------------------------------------
+
         echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
         echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
         export PATH="$HOME/.local/bin:$PATH"
-        source ~/.zshrc || true     
-        source ~/.bashrc || true
+        source ~/.zshrc 2>/dev/null || true
+        source ~/.bashrc 2>/dev/null || true
         log "WAI CLI 安装成功"
     else
         log "WAI CLI 已安装，版本：$(wai --version)"
@@ -151,8 +170,6 @@ configure_env() {
         log "W_AI_API_KEY 已保存并加载"
     fi
 }
-
-
 
 run_wai_worker() {
     RETRY=1
